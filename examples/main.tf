@@ -16,7 +16,6 @@ module "canaries" {
   failure_retention_period_in_days = 14
   success_retention_period_in_days = 7
   start_canary              = true
-  canary_timeout_in_seconds = 60
   canary_timeout_in_seconds = 90
   canary_memory_in_mb       = 2048
   canary_active_tracing     = true

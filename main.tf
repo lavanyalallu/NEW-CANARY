@@ -45,7 +45,6 @@ resource "aws_synthetics_canary" "canary" {
   failure_retention_period_in_days = var.failure_retention_period_in_days
   success_retention_period_in_days = var.success_retention_period_in_days
   start_canary                     = var.start_canary
-  associated_with_group            = var.create_synthetics_group ? aws_synthetics_group.this[0].id : null
   run_config {
     timeout_in_seconds = var.canary_timeout_in_seconds
     memory_in_mb       = var.canary_memory_in_mb
@@ -109,4 +108,17 @@ resource "aws_synthetics_group" "this" {
   count = var.create_synthetics_group ? 1 : 0
   name  = local.group_name
   tags  = var.tags
+}
+resource "aws_synthetics_group" "this" {
+  count = var.create_synthetics_group ? 1 : 0
+  name  = local.group_name
+  tags  = var.tags
+}
+
+resource "aws_synthetics_group_association" "this" {
+  # Create an association for each canary, but only if group creation is enabled.
+  for_each = var.create_synthetics_group ? var.endpoints : {}
+
+  group_name = aws_synthetics_group.this[0].name
+  canary_arn = aws_synthetics_canary.canary[each.key].arn
 }

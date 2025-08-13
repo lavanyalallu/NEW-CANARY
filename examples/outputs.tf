@@ -41,3 +41,13 @@ output "archive_files" {
   description = "Archive files created for canaries"
   value       = module.canaries.archive_file
 }
+// ...existing code...
+output "synthetics_group_info" {
+  description = "Information about the created Synthetics Group."
+  value       = module.canaries.synthetics_group
+}
+
+output "synthetics_group_associations" {
+  description = "The associations created between the canaries and the group."
+  value       = module.canaries.synthetics_group_association
+}
