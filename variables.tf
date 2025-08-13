@@ -37,11 +37,13 @@ variable "endpoints" {
 }
 
 variable "subnet_ids" {
+  description = "List of subnet IDs for the canary to run in. If empty, the canary will not be associated with a VPC."
   type        = list(string)
   default     = []
 }
 
 variable "security_group_ids" {
+  description = "List of security group IDs for the canary. Required if subnet_ids are provided."
   type        = list(string)
   default     = []
 }

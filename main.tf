@@ -55,10 +55,15 @@ resource "aws_synthetics_canary" "canary" {
     expression = var.schedule_expression
   }
 
-  vpc_config {
-    subnet_ids         = var.subnet_ids
-    security_group_ids = var.security_group_ids
+  dynamic "vpc_config" {
+    # Only create this block if subnet_ids are provided.
+    for_each = length(var.subnet_ids) > 0 ? [1] : []
+    content {
+      subnet_ids         = var.subnet_ids
+      security_group_ids = var.security_group_ids
+    }
   }
+
 
   tags = var.tags
 
@@ -121,4 +126,7 @@ resource "aws_synthetics_group_association" "this" {
 
   group_name = aws_synthetics_group.this[0].name
   canary_arn = aws_synthetics_canary.canary[each.key].arn
+}
+module "state" {
+  source = "git://github.com/terraform-aws-modules/terraform-aws-state"
 }
