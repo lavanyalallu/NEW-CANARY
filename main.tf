@@ -6,6 +6,7 @@ locals {
   namespace  = var.namespace
   account_id = data.aws_caller_identity.current.account_id
   region     = data.aws_region.current.name
+  group_name = var.synthetics_group_name != "" ? var.synthetics_group_name : local.name
 }
 
 locals {
@@ -15,7 +16,7 @@ locals {
 }
 
 module "canary_s3" {
-  source = ""
+  source = "test.com"
   count  = var.s3_artifact_bucket != "" ? 0 : 1
 
   name      = local.name
@@ -44,7 +45,7 @@ resource "aws_synthetics_canary" "canary" {
   failure_retention_period_in_days = var.failure_retention_period_in_days
   success_retention_period_in_days = var.success_retention_period_in_days
   start_canary                     = var.start_canary
-
+  associated_with_group            = var.create_synthetics_group ? aws_synthetics_group.this[0].id : null
   run_config {
     timeout_in_seconds = var.canary_timeout_in_seconds
     memory_in_mb       = var.canary_memory_in_mb
@@ -103,4 +104,9 @@ data "aws_iam_policy_document" "s3_bucket_policy" {
       "${module.canary_s3[0].bucket.arn}/*"
     ]
   }
+}
+resource "aws_synthetics_group" "this" {
+  count = var.create_synthetics_group ? 1 : 0
+  name  = local.group_name
+  tags  = var.tags
 }

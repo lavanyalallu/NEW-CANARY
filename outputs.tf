@@ -72,3 +72,7 @@ output "module_metadata" {
     tags           = var.tags
   }
 }
+output "synthetics_group" {
+  description = "Complete AWS Synthetics Group resource (if created)."
+  value       = var.create_synthetics_group ? aws_synthetics_group.this[0] : null
+}

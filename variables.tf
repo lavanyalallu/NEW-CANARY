@@ -125,3 +125,14 @@ variable "canary_timeout_in_seconds" {
     error_message = "The timeout must be between 3 and 840 seconds."
   }
 }
+variable "create_synthetics_group" {
+  description = "Set to true to create a CloudWatch Synthetics Group and associate canaries with it."
+  type        = bool
+  default     = false
+}
+
+variable "synthetics_group_name" {
+  description = "The name for the CloudWatch Synthetics Group. If not provided, it defaults to the module's 'name' variable."
+  type        = string
+  default     = ""
+}

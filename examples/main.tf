@@ -11,6 +11,8 @@ module "canaries" {
   schedule_expression = "rate(5 minutes)"
   canary_handler            = "pageLoadBlueprint.handler"
   canary_runtime_version    = "syn-nodejs-puppeteer-6.1"
+  create_synthetics_group = true
+  synthetics_group_name   = "example-website-monitors"
   failure_retention_period_in_days = 14
   success_retention_period_in_days = 7
   start_canary              = true
