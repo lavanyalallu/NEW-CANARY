@@ -20,6 +20,7 @@ metadata = getMetadata()
 tfOutput = getOutputs()
 
 def test_empty():
+    
     assert True
 #####
 
@@ -111,12 +112,12 @@ def test_synthetics_group_exists_on_aws():
     assert synthetics_group, "Synthetics Group info not found in outputs."
     
     group_name_from_output = synthetics_group.get("name")
-    # FIX: Use the dynamic group name from the output instead of a hard-coded string.
     assert group_name_from_output, "Synthetics group name is missing from the output."
 
     # Verify the group exists on AWS by trying to retrieve it
     try:
-        response = synthetics_client.get_group(GroupName=group_name_from_output)
+        # FIX: The correct parameter name is 'GroupIdentifier'.
+        response = synthetics_client.get_group(GroupIdentifier=group_name_from_output)
         assert response.get("Group"), "get_group API call did not return a Group object."
     except synthetics_client.exceptions.NotFoundException:
         pytest.fail(f"The Synthetics Group '{group_name_from_output}' was not found on AWS.")
@@ -138,7 +139,8 @@ def test_canary_is_associated_with_group():
     assert google_canary_arn, "ARN for 'test-google' canary not found in outputs."
 
     # Get all resources associated with the group from AWS
-    response = synthetics_client.list_group_resources(GroupName=group_name)
+    # FIX: The correct parameter name is 'GroupIdentifier'.
+    response = synthetics_client.list_group_resources(GroupIdentifier=group_name)
     associated_canary_arns = response.get('Resources', [])
 
     assert google_canary_arn in associated_canary_arns, \
