@@ -30,13 +30,22 @@ synthetics_client = boto3.client('synthetics', config=cfg)
 iam_client = boto3.client('iam', config=cfg)
 s3_client = boto3.client('s3', config=cfg)
 
-# Extract the actual 'value' from the Terraform output objects
-canaries = tfOutput.get("synthetics_canary", {}).get("value", {})
-iam_role = tfOutput.get("iam_role", {}).get("value", {})
-synthetics_group = tfOutput.get("synthetics_group", {}).get("value", {})
-s3_bucket_name = tfOutput.get("artifact_bucket_name", {}).get("value")
-bucket_created = tfOutput.get("bucket_created_by_module", {}).get("value")
-module_metadata = tfOutput.get("module_metadata", {}).get("value", {})
+# Helper function to safely extract the 'value' from a Terraform output object
+def get_output_value(output_name):
+    output_obj = tfOutput.get(output_name, {})
+    # If the output is a dictionary with a 'value' key, return that.
+    # Otherwise, assume it's already the direct value.
+    if isinstance(output_obj, dict) and 'value' in output_obj:
+        return output_obj['value']
+    return output_obj
+
+# Extract variables using the safe helper function
+canaries = get_output_value("synthetics_canary") or {}
+iam_role = get_output_value("iam_role") or {}
+synthetics_group = get_output_value("synthetics_group") or {}
+s3_bucket_name = get_output_value("artifact_bucket_name")
+bucket_created = get_output_value("bucket_created_by_module")
+module_metadata = get_output_value("module_metadata") or {}
 
 
 # --- Canary Test Cases ---
