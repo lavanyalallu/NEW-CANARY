@@ -120,3 +120,26 @@ def test_synthetics_group_exists_on_aws():
         assert response.get("Group"), "get_group API call did not return a Group object."
     except synthetics_client.exceptions.NotFoundException:
         pytest.fail(f"The Synthetics Group '{group_name_from_output}' was not found on AWS.")
+
+
+def test_canary_is_associated_with_group():
+    """
+    Verifies that the 'test-google' canary is correctly associated with the Synthetics Group.
+    """
+    # Skip this test if the group wasn't created, to avoid unnecessary failures.
+    if not synthetics_group:
+        pytest.skip("Skipping group association test; group was not created.")
+
+    group_name = synthetics_group.get("name")
+    assert group_name, "Synthetics group name is missing from the output."
+
+    # Get the ARN for the specific canary we are testing
+    google_canary_arn = canaries.get("test-google", {}).get("arn")
+    assert google_canary_arn, "ARN for 'test-google' canary not found in outputs."
+
+    # Get all resources associated with the group from AWS
+    response = synthetics_client.list_group_resources(GroupName=group_name)
+    associated_canary_arns = response.get('Resources', [])
+
+    assert google_canary_arn in associated_canary_arns, \
+        f"Canary '{google_canary_arn}' was not found in the synthetics group '{group_name}'."
