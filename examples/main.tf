@@ -32,55 +32,37 @@ module "canaries" {
   security_group_ids = []
 }
 
-# --- Example 1: Canary without a VPC ---
-# This canary will run in the AWS-managed environment.
-module "canaries_no_vpc" {
+# --- Example using S3 code source ---
+module "canaries_from_s3" {
   source = "../.."
 
-  name                = "example-canary-no-vpc"
+  name                = "example-canary-from-s3"
   namespace           = "example"
-  tags                = { Environment = "dev", Type = "no-vpc" }
-  schedule_expression = "rate(5 minutes)"
+  schedule_expression = "rate(15 minutes)"
   
-  # No subnet_ids or security_group_ids are provided.
-  # The root module will automatically skip the vpc_config block.
-  
+  code_source    = "S3"
+  code_s3_bucket = "my-existing-canary-scripts-bucket"
+  code_s3_key    = "scripts/my-custom-canary.zip"
+
+  # Endpoints map is still required for the for_each loop, but the content is not used for code generation.
   endpoints = {
-    homepage = { url = "https://example.com" }
+    s3_canary = { url = "placeholder" }
   }
 }
 
-
-# --- Example 2: Canary inside a VPC sourced from a state module ---
-
-# This is your state module that provides VPC information.
-# (You would configure this to point to your actual state backend)
-module "vpc_state" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "5.5.2"
-  # This is just an example; you would configure this module
-  # to read from your actual remote state.
-  name = "example-vpc"
-  cidr = "10.0.0.0/16"
-  azs             = ["us-east-1a", "us-east-1b"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
-}
-
-# This canary will be deployed into the subnets provided by the state module.
-module "canaries_with_vpc" {
+# --- Example using a local ZIP_FILE code source ---
+module "canaries_from_zip" {
   source = "../.."
 
-  name                = "example-canary-with-vpc"
+  name                = "example-canary-from-zip"
   namespace           = "example"
-  tags                = { Environment = "dev", Type = "with-vpc" }
-  schedule_expression = "rate(10 minutes)"
-
-  # Provide the subnet and security group IDs from the state module.
-  subnet_ids         = module.vpc_state.private_subnets
-  security_group_ids = [module.vpc_state.default_security_group_id]
+  schedule_expression = "rate(15 minutes)"
+  
+  code_source        = "ZIP_FILE"
+  code_zip_file_path = "./canary_scripts/custom_script.zip" # A path to a zip file in your project
 
   endpoints = {
-    internal_api = { url = "http://internal-service.example.local" }
+    zip_canary = { url = "placeholder" }
   }
 }
 

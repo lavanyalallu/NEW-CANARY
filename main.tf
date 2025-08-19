@@ -45,6 +45,13 @@ resource "aws_synthetics_canary" "canary" {
   failure_retention_period_in_days = var.failure_retention_period_in_days
   success_retention_period_in_days = var.success_retention_period_in_days
   start_canary                     = var.start_canary
+
+  # Conditionally set the code source
+  s3_bucket   = var.code_source == "S3" ? var.code_s3_bucket : null
+  s3_key      = var.code_source == "S3" ? var.code_s3_key : null
+  s3_version  = var.code_source == "S3" ? var.code_s3_version : null
+  zip_file    = var.code_source == "TEMPLATE" ? data.archive_file.canary_archive_file[each.key].output_path : (var.code_source == "ZIP_FILE" ? var.code_zip_file_path : null)
+
   run_config {
     timeout_in_seconds = var.canary_timeout_in_seconds
     memory_in_mb       = var.canary_memory_in_mb
@@ -114,11 +121,6 @@ resource "aws_synthetics_group" "this" {
   name  = local.group_name
   tags  = var.tags
 }
-resource "aws_synthetics_group" "this" {
-  count = var.create_synthetics_group ? 1 : 0
-  name  = local.group_name
-  tags  = var.tags
-}
 
 resource "aws_synthetics_group_association" "this" {
   # Create an association for each canary, but only if group creation is enabled.
@@ -129,4 +131,3 @@ resource "aws_synthetics_group_association" "this" {
 }
 module "state" {
   source = "git://github.com/terraform-aws-modules/terraform-aws-state"
-}

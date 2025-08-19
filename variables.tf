@@ -54,6 +54,40 @@ variable "s3_artifact_bucket" {
   default     = ""
 }
 
+variable "code_source" {
+  description = "The source of the canary script code. One of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
+  type        = string
+  default     = "TEMPLATE"
+  validation {
+    condition     = contains(["TEMPLATE", "S3", "ZIP_FILE"], var.code_source)
+    error_message = "The code_source must be one of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
+  }
+}
+
+variable "code_s3_bucket" {
+  description = "The S3 bucket name for the canary script. Required if code_source is 'S3'."
+  type        = string
+  default     = null
+}
+
+variable "code_s3_key" {
+  description = "The S3 key for the canary script. Required if code_source is 'S3'."
+  type        = string
+  default     = null
+}
+
+variable "code_s3_version" {
+  description = "The S3 version ID for the canary script. Optional if code_source is 'S3'."
+  type        = string
+  default     = null
+}
+
+variable "code_zip_file_path" {
+  description = "The local path to the canary script zip file. Required if code_source is 'ZIP_FILE'."
+  type        = string
+  default     = null
+}
+
 variable "canary_handler" {
   description = "The handler for the canary script."
   type        = string
