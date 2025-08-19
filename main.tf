@@ -86,7 +86,8 @@ resource "aws_synthetics_canary" "canary" {
 
 # Upload canary zip files to S3
 resource "aws_s3_object" "canary_zip" {
-  for_each = var.endpoints
+  # FIX: Only create an S3 object if the code source is TEMPLATE.
+  for_each = { for k, v in var.endpoints : k => v if var.code_source == "TEMPLATE" }
 
   bucket = local.artifact_bucket_name
   key    = "${each.key}/canary.zip"
