@@ -77,7 +77,8 @@ resource "aws_synthetics_canary" "canary" {
   tags = var.tags
 
   depends_on = [
-    data.archive_file.canary_archive_file,
+    # FIX: Remove the explicit dependency on the archive_file data source.
+    # Terraform infers this dependency automatically from the zip_file argument.
     aws_iam_role.canary_role,
     aws_iam_policy.canary_policy,
     module.canary_s3
@@ -95,8 +96,9 @@ resource "aws_s3_object" "canary_zip" {
   etag   = data.archive_file.canary_archive_file[each.key].output_md5
 
   depends_on = [
-    module.canary_s3,
-    data.archive_file.canary_archive_file
+    # FIX: Remove the explicit dependency on the archive_file data source.
+    # Terraform infers this dependency automatically from the source argument.
+    module.canary_s3
   ]
 }
 data "aws_iam_policy_document" "s3_bucket_policy" {
