@@ -10,8 +10,9 @@ locals {
 }
 
 locals {
+  # FIX: Only generate file content if the code source is TEMPLATE.
   file_content = { for k, v in var.endpoints :
-    k => templatefile("${path.module}/canary-lambda.js.tpl", { endpoint = v.url })
+    k => var.code_source == "TEMPLATE" ? templatefile("${path.module}/canary-lambda.js.tpl", { endpoint = v.url }) : ""
   }
 }
 
@@ -28,7 +29,8 @@ locals {
 }
 
 data "archive_file" "canary_archive_file" {
-  for_each       = var.endpoints
+  # FIX: Only create an archive file if the code source is TEMPLATE.
+  for_each       = { for k, v in var.endpoints : k => v if var.code_source == "TEMPLATE" }
   type           = "zip"
   source_content = local.file_content[each.key]
   output_path    = "/tmp/${each.key}_${md5(local.file_content[each.key])}.zip"
