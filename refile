@@ -60,8 +60,6 @@ resource "aws_synthetics_canary" "canary" {
     timeout_in_seconds = var.canary_timeout_in_seconds
     memory_in_mb       = var.canary_memory_in_mb
     active_tracing     = var.canary_active_tracing
-    environment_variables = var.canary_environment_variables
-
   }
 
   schedule {
@@ -80,31 +78,9 @@ resource "aws_synthetics_canary" "canary" {
 
   tags = var.tags
 
-  # depends_on = [
-  #   # FIX: Remove the explicit dependency on the archive_file data source.
-  #   # Terraform infers this dependency automatically from the zip_file argument.
-  #   aws_iam_role.canary_role,
-  #   aws_iam_policy.canary_policy,
-  #   module.canary_s3
-  # ]
 }
 
-# Upload canary zip files to S3
-# resource "aws_s3_object" "canary_zip" {
-#   # FIX: Only create an S3 object if the code source is TEMPLATE.
-#   for_each = { for k, v in var.endpoints : k => v if var.code_source == "TEMPLATE" }
 
-#   bucket = local.artifact_bucket_name
-#   key    = "${each.key}/canary.zip"
-#   source = data.archive_file.canary_archive_file[each.key].output_path
-#   etag   = data.archive_file.canary_archive_file[each.key].output_md5
-
-#   depends_on = [
-#     # FIX: Remove the explicit dependency on the archive_file data source.
-#     # Terraform infers this dependency automatically from the source argument.
-#     module.canary_s3
-#   ]
-# }
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     sid    = "AllowCloudWatchSyntheticsAccess"

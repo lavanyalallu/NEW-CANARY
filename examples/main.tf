@@ -19,6 +19,10 @@ module "canaries" {
   canary_timeout_in_seconds = 90
   canary_memory_in_mb       = 2048
   canary_active_tracing     = true
+  canary_environment_variables = {
+    LOG_LEVEL = "INFO"
+    API_KEY   = "some-secret-value" # For production, consider using AWS Secrets Manager
+  }
 
   # Don't provide s3_artifact_bucket - let root module create one
   s3_artifact_bucket  = ""

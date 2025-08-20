@@ -172,3 +172,8 @@ variable "synthetics_group_name" {
   type        = string
   default     = ""
 }
+variable "canary_environment_variables" {
+  description = "A map of environment variables to apply to the canary execution."
+  type        = map(string)
+  default     = {}
+}
