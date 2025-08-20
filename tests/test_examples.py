@@ -146,7 +146,7 @@ def test_synthetics_group_exists_on_aws():
 
 def test_canary_is_associated_with_group():
     """
-    Verifies that the 'test-google' canary is correctly associated with the Synthetics Group.
+    Verifies that all canaries are correctly associated with the Synthetics Group.
     """
     # Skip this test if the group wasn't created, to avoid unnecessary failures.
     if not synthetics_group:
@@ -155,14 +155,15 @@ def test_canary_is_associated_with_group():
     group_name = synthetics_group.get("name")
     assert group_name, "Synthetics group name is missing from the output."
 
-    # Get the ARN for the specific canary we are testing
-    google_canary_arn = canaries.get("test-google", {}).get("arn")
-    assert google_canary_arn, "ARN for 'test-google' canary not found in outputs."
+    # FIX: Get all expected canary ARNs from the Terraform output, not just one.
+    expected_canary_arns = {details['arn'] for name, details in canaries.items() if 'arn' in details}
+    assert expected_canary_arns, "No canary ARNs found in the outputs to test for group association."
 
     # Get all resources associated with the group from AWS
-    # FIX: The correct parameter name is 'GroupIdentifier'.
     response = synthetics_client.list_group_resources(GroupIdentifier=group_name)
-    associated_canary_arns = response.get('Resources', [])
+    associated_canary_arns = set(response.get('Resources', []))
 
-    assert google_canary_arn in associated_canary_arns, \
-        f"Canary '{google_canary_arn}' was not found in the synthetics group '{group_name}'."
+    # FIX: Check that the set of expected ARNs is a subset of the actual associated ARNs.
+    # This ensures every canary we created is in the group.
+    assert expected_canary_arns.issubset(associated_canary_arns), \
+        f"Not all canaries were found in the synthetics group '{group_name}'."
