@@ -65,13 +65,19 @@ def test_canary_configuration():
         assert canary_details["name"].endswith(canary_name), \
             f"Expected canary name to end with {canary_name}, but got {canary_details['name']}"
 
+
         assert canary_details["handler"] == "pageLoadBlueprint.handler"
         
         # Test the ARN
         arn = canary_details.get("arn")
         assert arn, f"ARN is missing for {canary_name} canary."
         assert arn.startswith("arn:aws:synthetics:")
-        assert f":canary:{canary_name}" in arn
+        
+        # FIX: Use the full canary name from the output (`canary_details['name']`)
+        # for the ARN assertion, not just the map key (`canary_name`).
+        full_canary_name = canary_details['name']
+        assert f":canary:{full_canary_name}" in arn, \
+            f"Expected ARN to contain ':canary:{full_canary_name}', but got '{arn}'"
 
         # Test the run configuration
         run_config = canary_details.get("run_config", [{}])[0]
