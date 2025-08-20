@@ -51,22 +51,20 @@ module_metadata = get_output_value("module_metadata") or {}
 
 # --- Canary Test Cases ---
 
-def test_google_canary_configuration():
+# FIX: Use pytest.mark.parametrize to run this test for every canary in the output.
+# This removes the hardcoded "test-google" name.
+@pytest.mark.parametrize("canary_name, canary_details", canaries.items())
+def test_canary_configuration(canary_name, canary_details):
     """
-    Validates the configuration for the 'test-google' canary.
+    Validates the configuration for each canary defined in the Terraform outputs.
     """
-    canary_name = "test-google"
-    assert canary_name in canaries, f"Canary '{canary_name}' not found in Terraform outputs."
-    
-    canary_details = canaries[canary_name]
-    
     # Test values from the output file
     assert canary_details["name"] == canary_name
     assert canary_details["handler"] == "pageLoadBlueprint.handler"
     
     # Test the ARN
     arn = canary_details.get("arn")
-    assert arn, "ARN is missing for test-google canary."
+    assert arn, f"ARN is missing for {canary_name} canary."
     assert arn.startswith("arn:aws:synthetics:")
     assert f":canary:{canary_name}" in arn
 
