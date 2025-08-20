@@ -41,7 +41,7 @@ data "archive_file" "canary_archive_file" {
 resource "aws_synthetics_canary" "canary" {
   for_each = var.endpoints
 
-  name                             = each.key
+  name                             = "${local.name}-${each.key}"
   artifact_s3_location             = "s3://${local.artifact_bucket_name}/${each.key}"
   execution_role_arn               = aws_iam_role.canary_role.arn
   handler                          = var.canary_handler

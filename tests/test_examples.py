@@ -64,8 +64,6 @@ def test_google_canary_configuration():
     assert canary_details["name"] == canary_name
     assert canary_details["handler"] == "pageLoadBlueprint.handler"
     
-    # FIX: Removed assertion for 'failure_retention_period_in_days' as it may not be in the output.
-    
     # Test the ARN
     arn = canary_details.get("arn")
     assert arn, "ARN is missing for test-google canary."
@@ -75,6 +73,20 @@ def test_google_canary_configuration():
     # Test the run configuration
     run_config = canary_details.get("run_config", [{}])[0]
     assert run_config.get("timeout_in_seconds") == 90
+
+    # Verify tags by fetching the canary from AWS
+    try:
+        response = synthetics_client.get_canary(Name=canary_name)
+        actual_tags = response.get("Canary", {}).get("Tags", {})
+        
+        expected_tags = module_metadata.get("tags", {})
+        assert expected_tags, "Expected tags not found in module_metadata output."
+
+        for k, v in expected_tags.items():
+            assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
+
+    except synthetics_client.exceptions.NotFoundException:
+        pytest.fail(f"The Canary '{canary_name}' was not found on AWS.")
 
 
 # --- Shared Resource Test Cases ---
@@ -116,9 +128,18 @@ def test_synthetics_group_exists_on_aws():
 
     # Verify the group exists on AWS by trying to retrieve it
     try:
-        # FIX: The correct parameter name is 'GroupIdentifier'.
         response = synthetics_client.get_group(GroupIdentifier=group_name_from_output)
-        assert response.get("Group"), "get_group API call did not return a Group object."
+        group_details = response.get("Group")
+        assert group_details, "get_group API call did not return a Group object."
+
+        # Verify the tags on the group
+        actual_tags = group_details.get("Tags", {})
+        expected_tags = module_metadata.get("tags", {})
+        assert expected_tags, "Expected tags not found in module_metadata output."
+
+        for k, v in expected_tags.items():
+            assert actual_tags.get(k) == v, f"Group tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
+
     except synthetics_client.exceptions.NotFoundException:
         pytest.fail(f"The Synthetics Group '{group_name_from_output}' was not found on AWS.")
 
