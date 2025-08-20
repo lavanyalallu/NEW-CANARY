@@ -85,17 +85,18 @@ def test_canary_configuration():
 
         # Verify tags by fetching the canary from AWS
         try:
-            response = synthetics_client.get_canary(Name=canary_name)
+            # FIX: Use the full canary name (`full_canary_name`) to fetch the canary from AWS.
+            response = synthetics_client.get_canary(Name=full_canary_name)
             actual_tags = response.get("Canary", {}).get("Tags", {})
             
             expected_tags = module_metadata.get("tags", {})
             assert expected_tags, "Expected tags not found in module_metadata output."
 
             for k, v in expected_tags.items():
-                assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch for {canary_name}: expected '{v}', got '{actual_tags.get(k)}'"
+                assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch for {full_canary_name}: expected '{v}', got '{actual_tags.get(k)}'"
 
         except synthetics_client.exceptions.NotFoundException:
-            pytest.fail(f"The Canary '{canary_name}' was not found on AWS.")
+            pytest.fail(f"The Canary '{full_canary_name}' was not found on AWS.")
 
 
 # --- Shared Resource Test Cases ---
