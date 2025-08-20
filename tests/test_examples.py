@@ -51,40 +51,42 @@ module_metadata = get_output_value("module_metadata") or {}
 
 # --- Canary Test Cases ---
 
-# FIX: Use pytest.mark.parametrize to run this test for every canary in the output.
-# This removes the hardcoded "test-google" name.
-@pytest.mark.parametrize("canary_name, canary_details", canaries.items())
-def test_canary_configuration(canary_name, canary_details):
+# FIX: The parametrize decorator is removed. The test now loops internally.
+def test_canary_configuration():
     """
     Validates the configuration for each canary defined in the Terraform outputs.
     """
-    # Test values from the output file
-    assert canary_details["name"] == canary_name
-    assert canary_details["handler"] == "pageLoadBlueprint.handler"
-    
-    # Test the ARN
-    arn = canary_details.get("arn")
-    assert arn, f"ARN is missing for {canary_name} canary."
-    assert arn.startswith("arn:aws:synthetics:")
-    assert f":canary:{canary_name}" in arn
+    assert canaries, "No canaries found in the Terraform outputs to test."
 
-    # Test the run configuration
-    run_config = canary_details.get("run_config", [{}])[0]
-    assert run_config.get("timeout_in_seconds") == 90
-
-    # Verify tags by fetching the canary from AWS
-    try:
-        response = synthetics_client.get_canary(Name=canary_name)
-        actual_tags = response.get("Canary", {}).get("Tags", {})
+    # Loop through each canary from the output file
+    for canary_name, canary_details in canaries.items():
+        # Test values from the output file
+        assert canary_details["name"] == canary_name
+        assert canary_details["handler"] == "pageLoadBlueprint.handler"
         
-        expected_tags = module_metadata.get("tags", {})
-        assert expected_tags, "Expected tags not found in module_metadata output."
+        # Test the ARN
+        arn = canary_details.get("arn")
+        assert arn, f"ARN is missing for {canary_name} canary."
+        assert arn.startswith("arn:aws:synthetics:")
+        assert f":canary:{canary_name}" in arn
 
-        for k, v in expected_tags.items():
-            assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
+        # Test the run configuration
+        run_config = canary_details.get("run_config", [{}])[0]
+        assert run_config.get("timeout_in_seconds") == 90
 
-    except synthetics_client.exceptions.NotFoundException:
-        pytest.fail(f"The Canary '{canary_name}' was not found on AWS.")
+        # Verify tags by fetching the canary from AWS
+        try:
+            response = synthetics_client.get_canary(Name=canary_name)
+            actual_tags = response.get("Canary", {}).get("Tags", {})
+            
+            expected_tags = module_metadata.get("tags", {})
+            assert expected_tags, "Expected tags not found in module_metadata output."
+
+            for k, v in expected_tags.items():
+                assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch for {canary_name}: expected '{v}', got '{actual_tags.get(k)}'"
+
+        except synthetics_client.exceptions.NotFoundException:
+            pytest.fail(f"The Canary '{canary_name}' was not found on AWS.")
 
 
 # --- Shared Resource Test Cases ---
