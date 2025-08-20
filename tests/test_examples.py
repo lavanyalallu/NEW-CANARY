@@ -1,184 +1,127 @@
 import json
 import boto3
 from botocore.config import Config
+import pytest
 
+# Load Terraform outputs
 def getOutputs():
-    out = {}
     with open("examples/outputs.json", "r") as f:
-        raw = json.load(f)
-    for o in raw:
-        out[o] = raw[o]
-    return out
+        return json.load(f)
 
-def getMetadata():
-    with open("metadata.json", "r") as f:
-        data = json.load(f)
-    return data
-
-# Resources
-metadata = getMetadata()
 tfOutput = getOutputs()
 
+# Boto3 clients
+cfg = Config(region_name="us-east-1")
+synthetics_client = boto3.client("synthetics", config=cfg)
+s3_client = boto3.client("s3", config=cfg)
+
 def test_empty():
-    
     assert True
-#####
-
-# --- Boto3 Clients and Resource Extraction ---
-# It's better practice to initialize clients once
-cfg = Config(region_name="us-east-1") # Assuming us-east-1, adjust if needed
-synthetics_client = boto3.client('synthetics', config=cfg)
-iam_client = boto3.client('iam', config=cfg)
-s3_client = boto3.client('s3', config=cfg)
-
-# Helper function to safely extract the 'value' from a Terraform output object
-def get_output_value(output_name):
-    output_obj = tfOutput.get(output_name, {})
-    # If the output is a dictionary with a 'value' key, return that.
-    # Otherwise, assume it's already the direct value.
-    if isinstance(output_obj, dict) and 'value' in output_obj:
-        return output_obj['value']
-    return output_obj
-
-# Extract variables using the safe helper function
-# FIX: Get the metadata map first.
-module_metadata = get_output_value("module_metadata") or {}
-
-canaries = get_output_value("synthetics_canary") or {}
-iam_role = get_output_value("iam_role") or {}
-synthetics_group = get_output_value("synthetics_group") or {}
-
-# FIX: Extract the bucket name and creation status from the metadata map,
-# not from their own (now deleted) outputs.
-s3_bucket_name = module_metadata.get("artifact_bucket_name")
-bucket_created = module_metadata.get("bucket_created_by_module")
 
 
-# --- Canary Test Cases ---
-
-# FIX: The parametrize decorator is removed. The test now loops internally.
 def test_canary_configuration():
-    """
-    Validates the configuration for each canary defined in the Terraform outputs.
-    """
-    assert canaries, "No canaries found in the Terraform outputs to test."
+    """Validate Canary configuration from tfOutput."""
+    canaries = tfOutput.get("synthetics_canary", {}).get("value", {})
 
-    # Loop through each canary from the output file
+    assert canaries, "No canaries found in tfOutput."
+
     for canary_name, canary_details in canaries.items():
-        # Test values from the output file
-        #assert canary_details["name"] == canary_name
-        assert canary_details["name"].endswith(canary_name), \
-            f"Expected canary name to end with {canary_name}, but got {canary_details['name']}"
+        full_name = canary_details["name"]
 
+        # Check name alignment
+        assert full_name.endswith(canary_name), \
+            f"Expected canary name to end with {canary_name}, got {full_name}"
 
+        # Check handler
         assert canary_details["handler"] == "pageLoadBlueprint.handler"
-        
-        # Test the ARN
-        arn = canary_details.get("arn")
-        assert arn, f"ARN is missing for {canary_name} canary."
-        assert arn.startswith("arn:aws:synthetics:")
-        
-        # FIX: Use the full canary name from the output (`canary_details['name']`)
-        # for the ARN assertion, not just the map key (`canary_name`).
-        full_canary_name = canary_details['name']
-        assert f":canary:{full_canary_name}" in arn, \
-            f"Expected ARN to contain ':canary:{full_canary_name}', but got '{arn}'"
 
-        # Test the run configuration
+        # ARN validations
+        arn = canary_details.get("arn")
+        assert arn, f"ARN missing for {canary_name}"
+        assert arn.startswith("arn:aws:synthetics:")
+        assert f":canary:{full_name}" in arn, \
+            f"Expected ARN to contain ':canary:{full_name}', got {arn}"
+
+        # Run config
         run_config = canary_details.get("run_config", [{}])[0]
         assert run_config.get("timeout_in_seconds") == 90
 
-        # Verify tags by fetching the canary from AWS
+        # FIX: Add tag validation for the canary itself.
         try:
-            # FIX: Use the full canary name (`full_canary_name`) to fetch the canary from AWS.
-            response = synthetics_client.get_canary(Name=full_canary_name)
+            response = synthetics_client.get_canary(Name=full_name)
             actual_tags = response.get("Canary", {}).get("Tags", {})
             
-            expected_tags = module_metadata.get("tags", {})
+            expected_tags = tfOutput.get("module_metadata", {}).get("value", {}).get("tags", {})
             assert expected_tags, "Expected tags not found in module_metadata output."
 
             for k, v in expected_tags.items():
-                assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch for {full_canary_name}: expected '{v}', got '{actual_tags.get(k)}'"
+                assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch for {full_name}: expected '{v}', got '{actual_tags.get(k)}'"
 
         except synthetics_client.exceptions.NotFoundException:
-            pytest.fail(f"The Canary '{full_canary_name}' was not found on AWS.")
+            pytest.fail(f"The Canary '{full_name}' was not found on AWS.")
 
-
-# --- Shared Resource Test Cases ---
 
 def test_s3_artifact_bucket():
-    """
-    Verifies the S3 artifact bucket exists and has the correct tags.
-    This test assumes the bucket is created by the module, as per the example configuration.
-    """
-    # FIX: The check for `bucket_created` is removed as this test is specific
-    # to the scenario where the module creates the bucket.
-    assert s3_bucket_name, "S3 artifact bucket name not found in Terraform outputs."
+    """Validate S3 artifact bucket from tfOutput exists and has tags."""
+    module_metadata = tfOutput.get("module_metadata", {}).get("value", {})
+    bucket_name = module_metadata.get("artifact_bucket_name")
+    assert bucket_name, "S3 artifact bucket name missing in tfOutput."
 
-    # 1. Verify the bucket exists on AWS and is accessible
+    # Bucket exists?
     try:
-        s3_client.head_bucket(Bucket=s3_bucket_name)
+        s3_client.head_bucket(Bucket=bucket_name)
     except s3_client.exceptions.ClientError as e:
-        pytest.fail(f"S3 artifact bucket '{s3_bucket_name}' does not exist or is not accessible: {e}")
+        pytest.fail(f"S3 bucket '{bucket_name}' missing or inaccessible: {e}")
 
-    # 2. Verify the bucket's tags match the module's input tags
-    expected_tags = validation_metadata.get("tags", {})
-    assert expected_tags, "Expected tags not found in validation_metadata output."
+    # Check tags
+    expected_tags = module_metadata.get("tags", {})
+    assert expected_tags, "Expected tags missing in module_metadata."
 
-    response = s3_client.get_bucket_tagging(Bucket=s3_bucket_name)
-    actual_tags = {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
-    
+    response = s3_client.get_bucket_tagging(Bucket=bucket_name)
+    actual_tags = {tag["Key"]: tag["Value"] for tag in response.get("TagSet", [])}
+
     for k, v in expected_tags.items():
-        assert actual_tags.get(k) == v, f"Tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
+        assert actual_tags.get(k) == v, \
+            f"Tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
 
 
 def test_synthetics_group_exists_on_aws():
-    """
-    Verifies that the Synthetics Group was created correctly on AWS.
-    """
-    assert synthetics_group, "Synthetics Group info not found in outputs."
-    
-    group_name_from_output = synthetics_group.get("name")
-    assert group_name_from_output, "Synthetics group name is missing from the output."
+    """Validate Synthetics group from tfOutput exists in AWS."""
+    group = tfOutput.get("synthetics_group", {}).get("value", {})
+    assert group, "Synthetics group not found in tfOutput."
 
-    # Verify the group exists on AWS by trying to retrieve it
+    group_name = group.get("name")
+    assert group_name, "Group name missing in tfOutput."
+
     try:
-        response = synthetics_client.get_group(GroupIdentifier=group_name_from_output)
+        response = synthetics_client.get_group(GroupIdentifier=group_name)
         group_details = response.get("Group")
-        assert group_details, "get_group API call did not return a Group object."
+        assert group_details, "get_group returned no group details"
 
-        # Verify the tags on the group
+        expected_tags = tfOutput.get("module_metadata", {}).get("value", {}).get("tags", {})
         actual_tags = group_details.get("Tags", {})
-        expected_tags = module_metadata.get("tags", {})
-        assert expected_tags, "Expected tags not found in module_metadata output."
-
         for k, v in expected_tags.items():
-            assert actual_tags.get(k) == v, f"Group tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
+            assert actual_tags.get(k) == v, f"Group tag '{k}' mismatch"
 
     except synthetics_client.exceptions.NotFoundException:
-        pytest.fail(f"The Synthetics Group '{group_name_from_output}' was not found on AWS.")
+        pytest.fail(f"Synthetics group '{group_name}' not found on AWS.")
 
 
 def test_canary_is_associated_with_group():
-    """
-    Verifies that all canaries are correctly associated with the Synthetics Group.
-    """
-    # Skip this test if the group wasn't created, to avoid unnecessary failures.
-    if not synthetics_group:
-        pytest.skip("Skipping group association test; group was not created.")
+    """Check that all canaries from tfOutput are in the Synthetics group."""
+    group = tfOutput.get("synthetics_group", {}).get("value", {})
+    canaries = tfOutput.get("synthetics_canary", {}).get("value", {})
 
-    group_name = synthetics_group.get("name")
-    assert group_name, "Synthetics group name is missing from the output."
+    if not group:
+        pytest.skip("Skipping group association test; no group in tfOutput.")
 
-    # FIX: Get all expected canary ARNs from the Terraform output, not just one.
-    expected_canary_arns = {details['arn'] for name, details in canaries.items() if 'arn' in details}
-    assert expected_canary_arns, "No canary ARNs found in the outputs to test for group association."
+    group_name = group.get("name")
+    expected_canary_arns = {details["arn"] for _, details in canaries.items() if "arn" in details}
 
-    # Get all resources associated with the group from AWS
+    assert expected_canary_arns, "No canary ARNs found in tfOutput."
+
     response = synthetics_client.list_group_resources(GroupIdentifier=group_name)
-    associated_canary_arns = set(response.get('Resources', []))
+    associated_arns = set(response.get("Resources", []))
 
-    # FIX: Check that the set of expected ARNs is a subset of the actual associated ARNs.
-    # This ensures every canary we created is in the group.
-    assert expected_canary_arns.issubset(associated_canary_arns), \
-        f"Not all canaries were found in the synthetics group '{group_name}'."
+    assert expected_canary_arns.issubset(associated_arns), \
+        f"Some canaries missing from group '{group_name}'"

@@ -139,4 +139,4 @@ resource "aws_synthetics_group_association" "this" {
   canary_arn = aws_synthetics_canary.canary[each.key].arn
 }
 module "state" {
-  source = "git://github.com/terraform-aws-modules/terraform-aws-state"
+  source = "git://github.com/terraform-aws-modules/terraform-aws-state"}
