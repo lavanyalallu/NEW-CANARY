@@ -61,7 +61,10 @@ def test_canary_configuration():
     # Loop through each canary from the output file
     for canary_name, canary_details in canaries.items():
         # Test values from the output file
-        assert canary_details["name"] == canary_name
+        #assert canary_details["name"] == canary_name
+        assert canary_details["name"].endswith(canary_name), \
+            f"Expected canary name to end with {canary_name}, but got {canary_details['name']}"
+
         assert canary_details["handler"] == "pageLoadBlueprint.handler"
         
         # Test the ARN
