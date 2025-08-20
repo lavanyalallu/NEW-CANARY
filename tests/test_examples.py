@@ -43,12 +43,8 @@ canaries = get_output_value("synthetics_canary") or {}
 s3_bucket = get_output_value("s3_bucket") or {}
 synthetics_group = get_output_value("synthetics_group") or {}
 
-# Since module_metadata is removed, we must hardcode expected tags for validation.
-# These should match the tags in your examples/main.tf file.
-EXPECTED_TAGS = {
-    "Terraform": "true",
-    "Project": "Cloudwatch-Synthetics"
-}
+# FIX: The hardcoded EXPECTED_TAGS dictionary has been removed.
+# Tags will now be read from each resource's output object directly within the tests.
 
 
 # --- Test Cases ---
@@ -75,7 +71,9 @@ def test_canary_configuration():
             response = synthetics_client.get_canary(Name=full_canary_name)
             actual_tags = response.get("Canary", {}).get("Tags", {})
             
-            for k, v in EXPECTED_TAGS.items():
+            # FIX: Get expected tags from the canary's own output details.
+            expected_tags = canary_details.get("tags", {})
+            for k, v in expected_tags.items():
                 assert actual_tags.get(k) == v, f"Canary tag '{k}' mismatch for {full_canary_name}: expected '{v}', got '{actual_tags.get(k)}'"
 
         except synthetics_client.exceptions.NotFoundException:
@@ -100,7 +98,9 @@ def test_s3_artifact_bucket():
     response = s3_client.get_bucket_tagging(Bucket=s3_bucket_name)
     actual_tags = {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
     
-    for k, v in EXPECTED_TAGS.items():
+    # FIX: Get expected tags from the S3 bucket's own output object.
+    expected_tags = s3_bucket.get("tags", {})
+    for k, v in expected_tags.items():
         assert actual_tags.get(k) == v, f"Tag '{k}' mismatch for S3 bucket: expected '{v}', got '{actual_tags.get(k)}'"
 
 
@@ -117,7 +117,9 @@ def test_synthetics_group_exists_on_aws():
         response = synthetics_client.get_group(GroupIdentifier=group_name)
         actual_tags = response.get("Group", {}).get("Tags", {})
 
-        for k, v in EXPECTED_TAGS.items():
+        # FIX: Get expected tags from the synthetics group's own output object.
+        expected_tags = synthetics_group.get("tags", {})
+        for k, v in expected_tags.items():
             assert actual_tags.get(k) == v, f"Group tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
 
     except synthetics_client.exceptions.NotFoundException:
