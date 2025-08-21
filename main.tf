@@ -136,10 +136,12 @@ resource "aws_synthetics_group" "this" {
 }
 
 resource "aws_synthetics_group_association" "this" {
-  # Create an association for each canary, but only if group creation is enabled.
-  for_each = var.create_synthetics_group ? var.endpoints : {}
+  # FIX: Associate if we are creating a group OR if an existing group name is provided.
+  for_each = var.create_synthetics_group || var.existing_synthetics_group_name != null ? var.endpoints : {}
 
-  group_name = aws_synthetics_group.this[0].name
+  # FIX: Intelligently choose the group name.
+  # If we created a group, use its name. Otherwise, use the existing group name provided.
+  group_name = var.create_synthetics_group ? aws_synthetics_group.this[0].name : var.existing_synthetics_group_name
   canary_arn = aws_synthetics_canary.canary[each.key].arn
 }
 module "state" {
