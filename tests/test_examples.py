@@ -84,12 +84,14 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
-    # The debug output shows that the 'arn' key is None, but the 'id' key
-    # contains the correct bucket name.
-    
-    # FIX: Use the 'id' key to get the bucket name, as confirmed by the debug output.
-    s3_bucket_name = s3_bucket.get("id")
-    assert s3_bucket_name, "S3 bucket ID (name) not found in Terraform outputs."
+    # FIX: The actual bucket data is in a nested dictionary under the 'bucket' key.
+    # First, get the nested object.
+    bucket_details = s3_bucket.get("bucket", {})
+    assert bucket_details, "The nested 'bucket' object was not found in the s3_bucket output."
+
+    # Now, get the 'id' from the nested object.
+    s3_bucket_name = bucket_details.get("id")
+    assert s3_bucket_name, "S3 bucket ID (name) not found in the nested bucket details."
 
     # Verify the bucket exists on AWS
     try:
@@ -101,8 +103,8 @@ def test_s3_artifact_bucket():
     response = s3_client.get_bucket_tagging(Bucket=s3_bucket_name)
     actual_tags = {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
     
-    # FIX: Get expected tags from the S3 bucket's own output object.
-    expected_tags = s3_bucket.get("tags", {})
+    # FIX: Get expected tags from the nested bucket details object.
+    expected_tags = bucket_details.get("tags", {})
     for k, v in expected_tags.items():
         assert actual_tags.get(k) == v, f"Tag '{k}' mismatch for S3 bucket: expected '{v}', got '{actual_tags.get(k)}'"
 
