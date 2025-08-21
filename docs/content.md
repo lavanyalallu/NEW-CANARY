@@ -25,4 +25,18 @@
 | canary_active_tracing | Enables active X-Ray tracing for the canary. | bool | false | no |
 | create_synthetics_group | Whether to create an AWS Synthetics Group and associate the canaries with it. | bool | false | no |
 | synthetics_group_name | The name for the Synthetics Group if `create_synthetics_group` is true. | string | "" | no |
-| canary_environment_variables | A map of environment variables for the canary. | map(string) | {}
+| canary_environment_variables | A map of environment variables for the canary. | map(string) | {} | no |
+
+## Description
+
+This Terraform module provisions and configures AWS CloudWatch Synthetics Canaries to proactively monitor your application endpoints and APIs. It simplifies the process of setting up one or more canaries by automating the creation of all necessary resources, including IAM roles, S3 artifact buckets, and the canaries themselves.
+
+## Key Capabilities
+
+-  Creates multiple canaries from a single map of endpoints, making it easy to monitor many URLs with a single module instance.
+-  Supports using built-in AWS blueprints, custom scripts from local zip files, or scripts stored in an S3 bucket.
+- Automatically creates and configures a dedicated S3 bucket for canary artifacts, or can use a pre-existing bucket.
+-  Allows canaries to run within a specified VPC to monitor internal endpoints that are not publicly accessible.
+-  Optionally creates an AWS Synthetics Group to organize and manage all created canaries together for better visibility.
+-  Provides detailed control over canary settings, including schedule, runtime version, memory, timeout, and active X-Ray tracing.
+- Provisions the necessary IAM role and policies for the canary to execute and write logs
