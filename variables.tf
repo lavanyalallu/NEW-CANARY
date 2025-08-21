@@ -46,6 +46,11 @@ variable "security_group_ids" {
   description = "List of security group IDs for the canary. Required if subnet_ids are provided."
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = length(var.subnet_ids) == 0 || length(var.security_group_ids) > 0
+    error_message = "If subnet_ids are provided, at least one security_group_id must also be provided."
+  }
 }
 
 variable "s3_artifact_bucket" {
@@ -68,12 +73,22 @@ variable "code_s3_bucket" {
   description = "The S3 bucket name for the canary script. Required if code_source is 'S3'."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.code_source != "S3" || var.code_s3_bucket != null
+    error_message = "The code_s3_bucket variable must be set when code_source is 'S3'."
+  }
 }
 
 variable "code_s3_key" {
   description = "The S3 key for the canary script. Required if code_source is 'S3'."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.code_source != "S3" || var.code_s3_key != null
+    error_message = "The code_s3_key variable must be set when code_source is 'S3'."
+  }
 }
 
 variable "code_s3_version" {
@@ -86,6 +101,11 @@ variable "code_zip_file_path" {
   description = "The local path to the canary script zip file. Required if code_source is 'ZIP_FILE'."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.code_source != "ZIP_FILE" || var.code_zip_file_path != null
+    error_message = "The code_zip_file_path variable must be set when code_source is 'ZIP_FILE'."
+  }
 }
 
 variable "canary_handler" {
