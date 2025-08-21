@@ -84,9 +84,12 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
-    # Get the bucket name from the s3_bucket output object
+    # The debug output shows that the 'arn' key is None, but the 'id' key
+    # contains the correct bucket name.
+    
+    # FIX: Use the 'id' key to get the bucket name, as confirmed by the debug output.
     s3_bucket_name = s3_bucket.get("id")
-    assert s3_bucket_name, "S3 artifact bucket name not found in Terraform outputs."
+    assert s3_bucket_name, "S3 bucket ID (name) not found in Terraform outputs."
 
     # Verify the bucket exists on AWS
     try:
