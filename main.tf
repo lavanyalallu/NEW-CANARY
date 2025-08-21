@@ -6,7 +6,9 @@ locals {
   namespace  = var.namespace
   account_id = data.aws_caller_identity.current.account_id
   region     = data.aws_region.current.name
-  group_name = var.synthetics_group_name != "" ? var.synthetics_group_name : local.name
+
+  # FIX: The group_name local has been removed for simplicity.
+  # The group will now be named directly from local.name.
 }
 
 locals {
@@ -34,7 +36,8 @@ data "archive_file" "canary_archive_file" {
  # source_content = local.file_content[each.key]
   source {
     content = local.file_content[each.key]
-    filename = "nodejs/node_modules/canary-lambda.js"}
+    filename = "nodejs/node_modules/canary-lambda.js"
+    }
   output_path    = "/tmp/${each.key}_${md5(local.file_content[each.key])}.zip"
 }
 
@@ -127,7 +130,8 @@ data "aws_iam_policy_document" "s3_bucket_policy" {
 }
 resource "aws_synthetics_group" "this" {
   count = var.create_synthetics_group ? 1 : 0
-  name  = local.group_name
+  # FIX: The group is now named directly from local.name for consistency.
+  name  = local.name
   tags  = var.tags
 }
 
@@ -139,4 +143,5 @@ resource "aws_synthetics_group_association" "this" {
   canary_arn = aws_synthetics_canary.canary[each.key].arn
 }
 module "state" {
-  source = "git://github.com/terraform-aws-modules/terraform-aws-state"}
+  source = "git://github.com/terraform-aws-modules/terraform-aws-state"
+  }

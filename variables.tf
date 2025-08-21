@@ -188,10 +188,22 @@ variable "create_synthetics_group" {
 }
 
 variable "synthetics_group_name" {
-  description = "The name for the CloudWatch Synthetics Group. If not provided, it defaults to the module's 'name' variable."
+  description = "The name for the Synthetics Group if `create_synthetics_group` is true."
   type        = string
   default     = ""
 }
+
+variable "existing_synthetics_group_name" {
+  description = "The name of an existing Synthetics Group to associate the canaries with. If provided, `create_synthetics_group` should be false."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !(var.create_synthetics_group && var.existing_synthetics_group_name != null)
+    error_message = "You cannot set `create_synthetics_group` to true and provide an `existing_synthetics_group_name` at the same time."
+  }
+}
+
 variable "canary_environment_variables" {
   description = "A map of environment variables to apply to the canary execution."
   type        = map(string)
