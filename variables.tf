@@ -14,120 +14,16 @@ variable "tags" {
   default     = {}
 }
 
-variable "schedule_expression" {
-  description = "Schedule expression for canary"
-  type        = string
-
-  validation {
-    condition     = can(regex("^(rate|cron)\\(.+\\)$", var.schedule_expression))
-    error_message = "The schedule_expression must be a valid rate() or cron() expression."
-  }
-}
-
 variable "endpoints" {
   description = "Map of endpoints for canary testing"
   type = map(object({
     url = string
   }))
-
-  validation {
-    condition     = length(var.endpoints) > 0
-    error_message = "The endpoints map cannot be empty."
-  }
 }
 
-variable "subnet_ids" {
-  description = "List of subnet IDs for the canary to run in. If empty, the canary will not be associated with a VPC."
-  type        = list(string)
-  default     = []
-}
-
-variable "security_group_ids" {
-  description = "List of security group IDs for the canary. Required if subnet_ids are provided."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = length(var.subnet_ids) == 0 || length(var.security_group_ids) > 0
-    error_message = "If subnet_ids are provided, at least one security_group_id must also be provided."
-  }
-}
-
-variable "s3_artifact_bucket" {
-  description = "Name of S3 bucket to store Canary artifacts. If empty, one will be created."
+variable "schedule_expression" {
+  description = "Schedule expression for canary (e.g., 'rate(5 minutes)')"
   type        = string
-  default     = ""
-}
-
-variable "code_source" {
-  description = "The source of the canary script code. One of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
-  type        = string
-  default     = "TEMPLATE"
-  validation {
-    condition     = contains(["TEMPLATE", "S3", "ZIP_FILE"], var.code_source)
-    error_message = "The code_source must be one of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
-  }
-}
-
-variable "code_s3_bucket" {
-  description = "The S3 bucket name for the canary script. Required if code_source is 'S3'."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.code_source != "S3" || var.code_s3_bucket != null
-    error_message = "The code_s3_bucket variable must be set when code_source is 'S3'."
-  }
-}
-
-variable "code_s3_key" {
-  description = "The S3 key for the canary script. Required if code_source is 'S3'."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.code_source != "S3" || var.code_s3_key != null
-    error_message = "The code_s3_key variable must be set when code_source is 'S3'."
-  }
-}
-
-variable "code_s3_version" {
-  description = "The S3 version ID for the canary script. Optional if code_source is 'S3'."
-  type        = string
-  default     = null
-}
-
-variable "code_zip_file_path" {
-  description = "The local path to the canary script zip file. Required if code_source is 'ZIP_FILE'."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.code_source != "ZIP_FILE" || var.code_zip_file_path != null
-    error_message = "The code_zip_file_path variable must be set when code_source is 'ZIP_FILE'."
-  }
-}
-
-variable "canary_handler" {
-  description = "The handler for the canary script."
-  type        = string
-  default     = "pageLoadBlueprint.handler"
-
-  validation {
-    condition     = can(regex("^.+\\..+$", var.canary_handler))
-    error_message = "The canary_handler must be in the format 'filename.handler'."
-  }
-}
-
-variable "canary_runtime_version" {
-  description = "The runtime version for the canary."
-  type        = string
-  default     = "syn-nodejs-puppeteer-6.1"
-
-  validation {
-    condition     = substr(var.canary_runtime_version, 0, 4) == "syn-"
-    error_message = "The canary_runtime_version must start with 'syn-'."
-  }
 }
 
 variable "start_canary" {
@@ -136,76 +32,69 @@ variable "start_canary" {
   default     = true
 }
 
-variable "failure_retention_period_in_days" {
-  description = "The number of days to retain canary artifacts for failed runs (1-455)."
-  type        = number
-  default     = 31
+# --- Grouped Variables ---
+
+variable "code_config" {
+  description = "Configuration for the canary's execution code."
+  type = object({
+    handler          = string
+    runtime_version  = string
+    source           = optional(string, "TEMPLATE")
+    s3_bucket        = optional(string)
+    s3_key           = optional(string)
+    s3_version       = optional(string)
+    zip_file_path    = optional(string)
+  })
+
   validation {
-    condition     = var.failure_retention_period_in_days >= 1 && var.failure_retention_period_in_days <= 455
-    error_message = "The failure_retention_period_in_days must be between 1 and 455."
+    condition     = contains(["TEMPLATE", "S3", "ZIP_FILE"], var.code_config.source)
+    error_message = "The code_config.source must be one of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
+  }
+  validation {
+    condition     = var.code_config.source != "S3" || (var.code_config.s3_bucket != null && var.code_config.s3_key != null)
+    error_message = "If code_config.source is 'S3', then s3_bucket and s3_key must be provided."
+  }
+  validation {
+    condition     = var.code_config.source != "ZIP_FILE" || var.code_config.zip_file_path != null
+    error_message = "If code_config.source is 'ZIP_FILE', then zip_file_path must be provided."
   }
 }
 
-variable "success_retention_period_in_days" {
-  description = "The number of days to retain canary artifacts for successful runs (1-455)."
-  type        = number
-  default     = 31
-  validation {
-    condition     = var.success_retention_period_in_days >= 1 && var.success_retention_period_in_days <= 455
-    error_message = "The success_retention_period_in_days must be between 1 and 455."
+variable "run_config" {
+  description = "Configuration for the canary's runtime behavior."
+  type = object({
+    timeout_in_seconds = optional(number, 60)
+    memory_in_mb       = optional(number, 1024)
+    active_tracing     = optional(bool, false)
+    environment        = optional(map(string), {})
+  })
+}
+
+variable "artifact_config" {
+  description = "Configuration for canary artifacts."
+  type = object({
+    s3_bucket_name                   = optional(string, "")
+    success_retention_period_in_days = optional(number, 31)
+    failure_retention_period_in_days = optional(number, 31)
+  })
+}
+
+variable "vpc_config" {
+  description = "VPC configuration for the canary. Leave as null to run outside a VPC."
+  type = object({
+    subnet_ids         = list(string)
+    security_group_ids = list(string)
+  })
+  default = null
+}
+
+variable "group_config" {
+  description = "Configuration for associating canaries with a Synthetics Group."
+  type = object({
+    create_group      = optional(bool, false)
+    group_name        = optional(string) # Name of group to create or existing group to use
+  })
+  default = {
+    create_group = false
   }
-}
-
-variable "canary_memory_in_mb" {
-  description = "The memory in MB to allocate for a canary run."
-  type        = number
-  default     = 960
-  validation {
-    condition     = var.canary_memory_in_mb >= 960 && (var.canary_memory_in_mb - 960) % 1024 == 0 || var.canary_memory_in_mb == 2048
-    error_message = "Valid memory values for Puppeteer runtimes are 960, 2048, 3008, etc."
-  }
-}
-
-variable "canary_active_tracing" {
-  description = "Set to true to enable active X-Ray tracing."
-  type        = bool
-  default     = false
-}
-
-variable "canary_timeout_in_seconds" {
-  description = "How long the canary can run before it is stopped (3-840 seconds)."
-  type        = number
-  default     = 60
-  validation {
-    condition     = var.canary_timeout_in_seconds >= 3 && var.canary_timeout_in_seconds <= 840
-    error_message = "The timeout must be between 3 and 840 seconds."
-  }
-}
-variable "create_synthetics_group" {
-  description = "Set to true to create a CloudWatch Synthetics Group and associate canaries with it."
-  type        = bool
-  default     = false
-}
-
-variable "synthetics_group_name" {
-  description = "The name for the Synthetics Group if `create_synthetics_group` is true."
-  type        = string
-  default     = ""
-}
-
-variable "existing_synthetics_group_name" {
-  description = "The name of an existing Synthetics Group to associate the canaries with. If provided, `create_synthetics_group` should be false."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = !(var.create_synthetics_group && var.existing_synthetics_group_name != null)
-    error_message = "You cannot set `create_synthetics_group` to true and provide an `existing_synthetics_group_name` at the same time."
-  }
-}
-
-variable "canary_environment_variables" {
-  description = "A map of environment variables to apply to the canary execution."
-  type        = map(string)
-  default     = {}
 }
