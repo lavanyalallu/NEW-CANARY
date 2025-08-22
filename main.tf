@@ -102,8 +102,8 @@ resource "aws_synthetics_group" "this" {
   # Create a group only if create_group is true
   count = var.group_config.create_group ? 1 : 0
   
-  # Name the group with the provided name, or default to the module's base name
-  name  = coalesce(var.group_config.group_name, local.name)
+  # FIX: If a group_name is provided, append it to the base name. Otherwise, use the base name.
+  name  = var.group_config.group_name != null ? "${local.name}-${var.group_config.group_name}" : local.name
   tags  = var.tags
 }
 
