@@ -6,19 +6,16 @@ locals {
   namespace  = var.namespace
   account_id = data.aws_caller_identity.current.account_id
   region     = data.aws_region.current.name
-
-  # FIX: The group_name local has been removed for simplicity.
-  # The group will now be named directly from local.name.
 }
 
 locals {
-  # FIX: A slightly cleaner way to write this local.
   # This creates a map containing content only for canaries using the TEMPLATE method.
   file_content = { for k, v in var.endpoints : k => templatefile("${path.module}/canary-lambda.js.tpl", { endpoint = v.url }) if var.code_source == "TEMPLATE" }
 }
 
 module "canary_s3" {
   source = "test.com"
+  # Create a bucket only if one is not provided.
   count  = var.s3_artifact_bucket != "" ? 0 : 1
 
   name      = local.name
@@ -26,19 +23,19 @@ module "canary_s3" {
 }
 
 locals {
+  # Intelligently choose the bucket name
   artifact_bucket_name = var.s3_artifact_bucket != "" ? var.s3_artifact_bucket : module.canary_s3[0].name
 }
 
 data "archive_file" "canary_archive_file" {
-  # FIX: Only create an archive file if the code source is TEMPLATE.
+  # Only create an archive file if the code source is TEMPLATE.
   for_each       = { for k, v in var.endpoints : k => v if var.code_source == "TEMPLATE" }
   type           = "zip"
- # source_content = local.file_content[each.key]
   source {
-    content = local.file_content[each.key]
+    content  = local.file_content[each.key]
     filename = "nodejs/node_modules/canary-lambda.js"
-    }
-  output_path    = "/tmp/${each.key}_${md5(local.file_content[each.key])}.zip"
+  }
+  output_path = "/tmp/${each.key}_${md5(local.file_content[each.key])}.zip"
 }
 
 resource "aws_synthetics_canary" "canary" {
@@ -54,17 +51,16 @@ resource "aws_synthetics_canary" "canary" {
   start_canary                     = var.start_canary
 
   # Conditionally set the code source
-  s3_bucket   = var.code_source == "S3" ? var.code_s3_bucket : null
-  s3_key      = var.code_source == "S3" ? var.code_s3_key : null
-  s3_version  = var.code_source == "S3" ? var.code_s3_version : null
+  s3_bucket   = var.code_source == "S3" ? var.code_s3_config.bucket : null
+  s3_key      = var.code_source == "S3" ? var.code_s3_config.key : null
+  s3_version  = var.code_source == "S3" ? var.code_s3_config.version : null
   zip_file    = var.code_source == "TEMPLATE" ? data.archive_file.canary_archive_file[each.key].output_path : (var.code_source == "ZIP_FILE" ? var.code_zip_file_path : null)
 
   run_config {
-    timeout_in_seconds = var.canary_timeout_in_seconds
-    memory_in_mb       = var.canary_memory_in_mb
-    active_tracing     = var.canary_active_tracing
-    environment_variables = var.canary_environment_variables
-
+    timeout_in_seconds    = var.run_config.timeout_in_seconds
+    memory_in_mb          = var.run_config.memory_in_mb
+    active_tracing        = var.run_config.active_tracing
+    environment_variables = var.run_config.environment
   }
 
   schedule {
@@ -72,76 +68,51 @@ resource "aws_synthetics_canary" "canary" {
   }
 
   dynamic "vpc_config" {
-    # Only create this block if subnet_ids are provided.
-    for_each = length(var.subnet_ids) > 0 ? [1] : []
+    # Only create this block if vpc_config is provided.
+    for_each = var.vpc_config != null ? [1] : []
     content {
-      subnet_ids         = var.subnet_ids
-      security_group_ids = var.security_group_ids
+      subnet_ids         = var.vpc_config.subnet_ids
+      security_group_ids = var.vpc_config.security_group_ids
     }
   }
-
 
   tags = var.tags
-
-  # depends_on = [
-  #   # FIX: Remove the explicit dependency on the archive_file data source.
-  #   # Terraform infers this dependency automatically from the zip_file argument.
-  #   aws_iam_role.canary_role,
-  #   aws_iam_policy.canary_policy,
-  #   module.canary_s3
-  # ]
 }
 
-# Upload canary zip files to S3
-# resource "aws_s3_object" "canary_zip" {
-#   # FIX: Only create an S3 object if the code source is TEMPLATE.
-#   for_each = { for k, v in var.endpoints : k => v if var.code_source == "TEMPLATE" }
-
-#   bucket = local.artifact_bucket_name
-#   key    = "${each.key}/canary.zip"
-#   source = data.archive_file.canary_archive_file[each.key].output_path
-#   etag   = data.archive_file.canary_archive_file[each.key].output_md5
-
-#   depends_on = [
-#     # FIX: Remove the explicit dependency on the archive_file data source.
-#     # Terraform infers this dependency automatically from the source argument.
-#     module.canary_s3
-#   ]
-# }
-data "aws_iam_policy_document" "s3_bucket_policy" {
-  statement {
-    sid    = "AllowCloudWatchSyntheticsAccess"
-    effect  = "Allow"
-    principals {
-      type        = "AWS"
-      identifiers = [aws_iam_role.canary_role.arn]
-    }
-    actions   = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:GetBucketLocation",
-      "s3:ListBucket"
+resource "aws_iam_role" "canary_role" {
+  name = "${local.name}-role"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
     ]
-    resources = [
-      "${module.canary_s3[0].bucket.arn}",
-      "${module.canary_s3[0].bucket.arn}/*"
-    ]
-  }
+  })
+  tags = var.tags
 }
+
+# ... (rest of IAM policies and resources) ...
+
 resource "aws_synthetics_group" "this" {
-  count = var.create_synthetics_group ? 1 : 0
-  # FIX: The group is now named directly from local.name for consistency.
-  name  = local.name
+  # Create a group only if create_group is true
+  count = var.group_config.create_group ? 1 : 0
+  
+  # Name the group with the provided name, or default to the module's base name
+  name  = coalesce(var.group_config.group_name, local.name)
   tags  = var.tags
 }
 
 resource "aws_synthetics_group_association" "this" {
-  # FIX: Associate if we are creating a group OR if an existing group name is provided.
-  for_each = var.create_synthetics_group || var.existing_synthetics_group_name != null ? var.endpoints : {}
+  # Associate if we are creating a group OR if an existing group name is provided.
+  for_each = var.group_config.create_group || (var.group_config.group_name != null && !var.group_config.create_group) ? var.endpoints : {}
 
-  # FIX: Intelligently choose the group name.
-  # If we created a group, use its name. Otherwise, use the existing group name provided.
-  group_name = var.create_synthetics_group ? aws_synthetics_group.this[0].name : var.existing_synthetics_group_name
+  # Intelligently choose the group name.
+  group_name = var.group_config.create_group ? aws_synthetics_group.this[0].name : var.group_config.group_name
   canary_arn = aws_synthetics_canary.canary[each.key].arn
 }
 module "state" {

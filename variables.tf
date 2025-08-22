@@ -32,33 +32,61 @@ variable "start_canary" {
   default     = true
 }
 
-# --- Grouped Variables ---
+# --- Individual Variables (Reverted) ---
 
-variable "code_config" {
-  description = "Configuration for the canary's execution code."
+variable "s3_artifact_bucket" {
+  description = "Name of S3 bucket to store Canary artifacts. Provide an empty string to have one created."
+  type        = string
+}
+
+variable "code_source" {
+  description = "The source of the canary script code. One of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
+  type        = string
+}
+
+variable "code_s3_config" {
+  description = "Configuration for the canary script when source is S3. Required if code_source is 'S3'."
   type = object({
-    handler          = string
-    runtime_version  = string
-    source           = optional(string, "TEMPLATE")
-    s3_bucket        = optional(string)
-    s3_key           = optional(string)
-    s3_version       = optional(string)
-    zip_file_path    = optional(string)
+    bucket  = string
+    key     = string
+    version = optional(string)
   })
+  default = null
 
   validation {
-    condition     = contains(["TEMPLATE", "S3", "ZIP_FILE"], var.code_config.source)
-    error_message = "The code_config.source must be one of 'TEMPLATE', 'S3', or 'ZIP_FILE'."
-  }
-  validation {
-    condition     = var.code_config.source != "S3" || (var.code_config.s3_bucket != null && var.code_config.s3_key != null)
-    error_message = "If code_config.source is 'S3', then s3_bucket and s3_key must be provided."
-  }
-  validation {
-    condition     = var.code_config.source != "ZIP_FILE" || var.code_config.zip_file_path != null
-    error_message = "If code_config.source is 'ZIP_FILE', then zip_file_path must be provided."
+    condition     = var.code_source != "S3" || var.code_s3_config != null
+    error_message = "If code_source is 'S3', then code_s3_config must be provided."
   }
 }
+
+variable "code_zip_file_path" {
+  description = "The local path to the canary script zip file. Required if code_source is 'ZIP_FILE'."
+  type        = string
+  default     = null
+}
+
+variable "canary_handler" {
+  description = "The handler for the canary script."
+  type        = string
+}
+
+variable "canary_runtime_version" {
+  description = "The runtime version for the canary."
+  type        = string
+}
+
+variable "failure_retention_period_in_days" {
+  description = "The number of days to retain canary artifacts for failed runs."
+  type        = number
+}
+
+variable "success_retention_period_in_days" {
+  description = "The number of days to retain canary artifacts for successful runs."
+  type        = number
+}
+
+
+# --- Grouped Variables (Kept) ---
 
 variable "run_config" {
   description = "Configuration for the canary's runtime behavior."
@@ -67,15 +95,6 @@ variable "run_config" {
     memory_in_mb       = optional(number, 1024)
     active_tracing     = optional(bool, false)
     environment        = optional(map(string), {})
-  })
-}
-
-variable "artifact_config" {
-  description = "Configuration for canary artifacts."
-  type = object({
-    s3_bucket_name                   = optional(string, "")
-    success_retention_period_in_days = optional(number, 31)
-    failure_retention_period_in_days = optional(number, 31)
   })
 }
 
