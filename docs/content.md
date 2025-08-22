@@ -2,30 +2,23 @@
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| name | Name for the canary setup. | string | n/a | yes |
-| namespace | Namespace for tagging/naming. | string | n/a | yes |
-| tags | Tags to apply to all created resources. | map(string) | {} | no |
-| schedule_expression | Schedule expression for the canary (e.g., `rate(5 minutes)` or `cron(0 1 * * ? *)`). | string | n/a | yes |
+| name | Name for the canary setup. | `string` | n/a | yes |
+| namespace | Namespace for tagging/naming. | `string` | n/a | yes |
+| tags | Tags to apply to all created resources. | `map(string)` | `{}` | no |
 | endpoints | Map of endpoints for canary testing. The key is used as the canary name suffix. | <pre>map(object({<br>  url = string<br>}))</pre> | n/a | yes |
-| subnet_ids | List of subnet IDs for the canary to run in. If empty, the canary will not be associated with a VPC. | list(string) | [] | no |
-| security_group_ids | List of security group IDs for the canary. Required if `subnet_ids` are provided. | list(string) | [] | no |
-| s3_artifact_bucket | The name of an existing S3 bucket to store canary artifacts. If empty, a new bucket will be created. | string | "" | no |
-| code_source | The source of the canary script code. Must be one of `TEMPLATE`, `S3`, or `ZIP_FILE`. | string | TEMPLATE | no |
-| code_s3_bucket | The S3 bucket name for the canary script. Required if `code_source` is `S3`. | string | null | no |
-| code_s3_key | The S3 key for the canary script. Required if `code_source` is `S3`. | string | null | no |
-| code_s3_version | The S3 version ID for the canary script. | string | null | no |
-| code_zip_file_path | The local path to the canary script zip file. Required if `code_source` is `ZIP_FILE`. | string | null | no |
-| canary_handler | The entry point for the canary script. | string | n/a | yes |
-| canary_runtime_version | The runtime version for the canary. | string | n/a | yes |
-| start_canary | Specifies whether the canary is to start running upon creation. | bool | true | no |
-| canary_timeout_in_seconds | How long the canary is allowed to run before it is stopped. | number | 60 | no |
-| failure_retention_period_in_days | The number of days to retain data for failed canary runs. | number | 31 | no |
-| success_retention_period_in_days | The number of days to retain data for successful canary runs. | number | 31 | no |
-| canary_memory_in_mb | The amount of memory, in MB, to allocate to the canary. | number | 1024 | no |
-| canary_active_tracing | Enables active X-Ray tracing for the canary. | bool | false | no |
-| create_synthetics_group | Whether to create an AWS Synthetics Group and associate the canaries with it. | bool | false | no |
-| synthetics_group_name | The name for the Synthetics Group if `create_synthetics_group` is true. | string | "" | no |
-| canary_environment_variables | A map of environment variables for the canary. | map(string) | {} | no |
+| schedule_expression | Schedule expression for the canary (e.g., `rate(5 minutes)` or `cron(0 1 * * ? *)`). | `string` | n/a | yes |
+| start_canary | Specifies whether the canary is to start running upon creation. | `bool` | `true` | no |
+| s3_artifact_bucket | The name of an existing S3 bucket to store canary artifacts. If empty, a new bucket will be created. | `string` | n/a | yes |
+| code_source | The source of the canary script code. Must be one of `TEMPLATE`, `S3`, or `ZIP_FILE`. | `string` | n/a | yes |
+| code_s3_config | Configuration for the canary script when source is S3. Required if `code_source` is `S3`. | <pre>object({<br>  bucket  = string<br>  key     = string<br>  version = optional(string)<br>})</pre> | `null` | no |
+| code_zip_file_path | The local path to the canary script zip file. Required if `code_source` is `ZIP_FILE`. | `string` | `null` | no |
+| canary_handler | The entry point for the canary script. | `string` | n/a | yes |
+| canary_runtime_version | The runtime version for the canary. | `string` | n/a | yes |
+| failure_retention_period_in_days | The number of days to retain data for failed canary runs. | `number` | n/a | yes |
+| success_retention_period_in_days | The number of days to retain data for successful canary runs. | `number` | n/a | yes |
+| run_config | Configuration for the canary's runtime behavior. | <pre>object({<br>  timeout_in_seconds = optional(number, 60)<br>  memory_in_mb       = optional(number, 1024)<br>  active_tracing     = optional(bool, false)<br>  environment        = optional(map(string), {})<br>})</pre> | n/a | yes |
+| vpc_config | VPC configuration for the canary. Leave as `null` to run outside a VPC. | <pre>object({<br>  subnet_ids         = list(string)<br>  security_group_ids = list(string)<br>})</pre> | `null` | no |
+| group_config | Configuration for associating canaries with a Synthetics Group. | <pre>object({<br>  create_group = optional(bool, false)<br>  group_name   = optional(string)<br>})</pre> | `{ create_group = false }` | no |
 
 ## Description
 
