@@ -7,7 +7,8 @@ output "s3_bucket" {
 
 output "synthetics_group" {
   description = "The complete AWS Synthetics Group resource, only if it was created."
-  value       = var.create_synthetics_group ? aws_synthetics_group.this[0] : null
+  # FIX: Updated to use the new grouped variable
+  value       = var.group_config.create_group ? aws_synthetics_group.this[0] : null
 }
 
 output "synthetics_group_association" {
