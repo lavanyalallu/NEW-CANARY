@@ -35,8 +35,9 @@ variable "start_canary" {
 # --- Individual Variables (Reverted) ---
 
 variable "s3_artifact_bucket" {
-  description = "Name of S3 bucket to store Canary artifacts. Provide an empty string to have one created."
+  description = "Name of an existing S3 bucket to store Canary artifacts. If not provided (null), a new bucket will be created."
   type        = string
+  default     = null
 }
 
 variable "code_source" {

@@ -15,16 +15,16 @@ locals {
 
 module "canary_s3" {
   source = "test.com"
-  # Create a bucket only if one is not provided.
-  count  = var.s3_artifact_bucket != "" ? 0 : 1
+  # FIX: Create a bucket only if the variable is null.
+  count  = var.s3_artifact_bucket == null ? 1 : 0
 
   name      = local.name
   namespace = var.namespace
 }
 
 locals {
-  # Intelligently choose the bucket name
-  artifact_bucket_name = var.s3_artifact_bucket != "" ? var.s3_artifact_bucket : module.canary_s3[0].name
+  # FIX: Intelligently choose the bucket name based on whether the variable is null.
+  artifact_bucket_name = var.s3_artifact_bucket != null ? var.s3_artifact_bucket : module.canary_s3[0].name
 }
 
 data "archive_file" "canary_archive_file" {
