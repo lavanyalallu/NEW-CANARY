@@ -28,8 +28,10 @@ locals {
 # }
 locals {
   artifact_bucket_name = lower(
-    coalesce(var.s3_artifact_bucket, "") != "" ? var.s3_artifact_bucket :
-    (length(module.canary_s3) > 0 ? module.canary_s3[0].name : "")
+    coalesce(
+      var.s3_artifact_bucket,
+      length(module.canary_s3) > 0 ? module.canary_s3[0].name : null
+    ) != "" ? coalesce(var.s3_artifact_bucket, module.canary_s3[0].name) : (length(module.canary_s3) > 0 ? module.canary_s3[0].name : null)
   )
 }
 module "canary_s3" {
