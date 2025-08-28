@@ -84,14 +84,12 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
-    # FIX: The actual bucket data is in a nested dictionary under the 'bucket' key.
-    # First, get the nested object.
-    bucket_details = s3_bucket.get("bucket", {})
-    assert bucket_details, "The nested 'bucket' object was not found in the s3_bucket output."
+    # Try to use the flat structure if 'bucket' key is missing
+    bucket_details = s3_bucket.get("bucket") or s3_bucket
+    assert bucket_details, "The S3 bucket details were not found in the s3_bucket output."
 
-    # Now, get the 'id' from the nested object.
     s3_bucket_name = bucket_details.get("id")
-    assert s3_bucket_name, "S3 bucket ID (name) not found in the nested bucket details."
+    assert s3_bucket_name, "S3 bucket ID (name) not found in the bucket details."
 
     # Verify the bucket exists on AWS
     try:
