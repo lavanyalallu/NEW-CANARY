@@ -20,9 +20,15 @@ locals {
     endpoint      = v.url
   }) if var.code_source == "TEMPLATE" }
 }
+# locals {
+#   artifact_bucket_name = lower(
+#     var.s3_artifact_bucket != null ? var.s3_artifact_bucket :
+#     (length(module.canary_s3) > 0 ? module.canary_s3[0].name : "")
+#   )
+# }
 locals {
   artifact_bucket_name = lower(
-    var.s3_artifact_bucket != null ? var.s3_artifact_bucket :
+    coalesce(var.s3_artifact_bucket, "") != "" ? var.s3_artifact_bucket :
     (length(module.canary_s3) > 0 ? module.canary_s3[0].name : "")
   )
 }
