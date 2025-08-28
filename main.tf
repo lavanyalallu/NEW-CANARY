@@ -67,15 +67,11 @@ resource "aws_synthetics_canary" "canary" {
   s3_version  = var.code_source == "S3" ? var.code_s3_config.version : null
   zip_file    = var.code_source == "TEMPLATE" ? data.archive_file.canary_archive_file[each.key].output_path : (var.code_source == "ZIP_FILE" ? var.code_zip_file_path : null)
 
-  # FIX: Add artifact_config to allow for KMS encryption.
+  # FIX: Use a static block to always apply KMS encryption from the state module.
   artifact_config {
-    dynamic "s3_encryption" {
-      # Only create this block if a KMS key ARN is provided.
-      for_each = var.artifact_s3_kms_key_arn != null ? [1] : []
-      content {
-        encryption_mode = "SSE_KMS"
-        kms_key_arn     = var.artifact_s3_kms_key_arn
-      }
+    s3_encryption {
+      encryption_mode = "SSE_KMS"
+      kms_key_arn     = module.state.kms.this_region_arn
     }
   }
 
@@ -118,19 +114,19 @@ resource "aws_iam_role" "canary_role" {
   })
   tags = var.tags
 }
-
+    ]
+  }). (rest of IAM policies and resources) ...
+  tags = var.tags
+} REMOVED: The aws_synthetics_group resource has been removed as per code review.
+# The consumer of the module is now responsible for creating the group.
 # ... (rest of IAM policies and resources) ...
-
-# REMOVED: The aws_synthetics_group resource has been removed as per code review.
+resource "aws_synthetics_group_association" "this" {
+# REMOVED: The aws_synthetics_group resource has been removed as per code review.is provided.
 # The consumer of the module is now responsible for creating the group.
 
 resource "aws_synthetics_group_association" "this" {
   # FIX: Simplified logic. Create an association for each canary if a group_name is provided.
   for_each = var.group_name != null ? var.endpoints : {}
-
-  group_name = var.group_name
-  canary_arn = aws_synthetics_canary.canary[each.key].arn
-}
 module "state" {
-  source = "git://github.com/terraform-aws-modules/terraform-aws-state"
-  }
+  group_name = var.group_nameterraform-aws-modules/terraform-aws-state"
+  canary_arn = aws_synthetics_canary.canary[each.key].arn}module "state" {  source = "git://github.com/terraform-aws-modules/terraform-aws-state"  }

@@ -122,9 +122,3 @@ variable "group_name" {
   type        = string
   default     = null
 }
-
-variable "artifact_s3_kms_key_arn" {
-  description = "The ARN of the KMS key to use for encrypting canary artifacts in S3. If not provided, the default S3 encryption (SSE-S3) is used."
-  type        = string
-  default     = null
-}
