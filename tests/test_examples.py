@@ -84,6 +84,8 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
+    print("DEBUG s3_bucket:", s3_bucket)  # <--- Move here
+
     assert s3_bucket, "The S3 bucket output is empty or missing."
 
     bucket_details = s3_bucket.get("bucket") or s3_bucket
@@ -105,8 +107,6 @@ def test_s3_artifact_bucket():
     expected_tags = bucket_details.get("tags", {})
     for k, v in expected_tags.items():
         assert actual_tags.get(k) == v, f"Tag '{k}' mismatch for S3 bucket: expected '{v}', got '{actual_tags.get(k)}'"
-
-print("DEBUG s3_bucket:", s3_bucket)
 
 # REMOVED: This test is no longer relevant as the module is not responsible for creating the group.
 # The consumer of the module (the example code) is now responsible for this resource.

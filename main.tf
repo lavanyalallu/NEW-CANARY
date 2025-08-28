@@ -100,7 +100,9 @@ resource "aws_synthetics_canary" "canary" {
   name                             = "${local.name}-${each.key}"
   artifact_s3_location             = "s3://${local.artifact_bucket_name}/${each.key}/"
   execution_role_arn               = aws_iam_role.canary_role.arn
-  handler                          = var.blueprint_type == "api_request" ? "canary-api.handler" : (var.blueprint_type == "heartbeat" ? "canary-heartbeat.handler" : var.canary_handler)
+  handler                          = var.blueprint_type == "api_request" ? "canary-api.handler" :
+                                  (var.blueprint_type == "heartbeat" ? "canary-heartbeat.handler" :
+                                  (var.blueprint_type == "pageload" ? "canary-lambda.handler" : var.canary_handler))
   runtime_version                  = var.canary_runtime_version
   failure_retention_period_in_days = var.failure_retention_period_in_days
   success_retention_period_in_days = var.success_retention_period_in_days
