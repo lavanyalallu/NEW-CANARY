@@ -84,7 +84,8 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
-    # Try to use the flat structure if 'bucket' key is missing
+    assert s3_bucket, "The S3 bucket output is empty or missing."
+
     bucket_details = s3_bucket.get("bucket") or s3_bucket
     assert bucket_details, "The S3 bucket details were not found in the s3_bucket output."
 
@@ -101,11 +102,11 @@ def test_s3_artifact_bucket():
     response = s3_client.get_bucket_tagging(Bucket=s3_bucket_name)
     actual_tags = {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
     
-    # FIX: Get expected tags from the nested bucket details object.
     expected_tags = bucket_details.get("tags", {})
     for k, v in expected_tags.items():
         assert actual_tags.get(k) == v, f"Tag '{k}' mismatch for S3 bucket: expected '{v}', got '{actual_tags.get(k)}'"
 
+print("DEBUG s3_bucket:", s3_bucket)
 
 # REMOVED: This test is no longer relevant as the module is not responsible for creating the group.
 # The consumer of the module (the example code) is now responsible for this resource.
