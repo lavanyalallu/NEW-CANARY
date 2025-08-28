@@ -9,7 +9,7 @@ module "canaries" {
   canary_handler                   = "pageLoadBlueprint.handler"
   canary_runtime_version           = "syn-nodejs-puppeteer-6.2"
   start_canary                     = true
-  s3_artifact_bucket               = "" # REVERT: Explicitly pass an empty string to create a bucket.
+  # FIX: Removed `s3_artifact_bucket` to allow the module to create one by default.
   code_source                      = "TEMPLATE"
   failure_retention_period_in_days = 14
   success_retention_period_in_days = 7

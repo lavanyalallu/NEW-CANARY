@@ -17,7 +17,7 @@ data "aws_iam_policy_document" "canary_permissions" {
       "s3:ListBucket"
     ]
     resources = [
-      # REVERT: Use the local variable, which is now safe as the var is never null.
+      # FIX: Use the reliable local variable that is safe to use at plan time.
       "arn:aws:s3:::${local.artifact_bucket_name}/*",
       "arn:aws:s3:::${local.artifact_bucket_name}"
     ]

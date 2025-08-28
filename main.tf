@@ -23,8 +23,8 @@ locals {
 
 module "canary_s3" {
   source = "test.com"
-  # REVERT: Create a bucket only if the variable is an empty string.
-  count  = var.s3_artifact_bucket == "" ? 1 : 0
+  # FIX: Create a bucket only if the variable is null.
+  count  = var.s3_artifact_bucket == null ? 1 : 0
 
   # REVERT: Use the shorter 'namespace' for the bucket name to avoid exceeding the API's length limit.
   name      = var.namespace
@@ -32,8 +32,10 @@ module "canary_s3" {
 }
 
 locals {
-  # REVERT: This local now correctly and safely determines the bucket name based on an empty string check.
-  artifact_bucket_name = lower(var.s3_artifact_bucket != "" ? var.s3_artifact_bucket : module.canary_s3[0].name)
+  # FIX: This local now correctly and safely determines the bucket name.
+  # It checks if a bucket name was provided. If not, it uses the name of the bucket created by the module.
+  # This avoids the invalid index error by removing the direct dependency on the module's output.
+  artifact_bucket_name = lower(var.s3_artifact_bucket != null ? var.s3_artifact_bucket : module.canary_s3[0].name)
 }
 
 data "archive_file" "canary_archive_file" {

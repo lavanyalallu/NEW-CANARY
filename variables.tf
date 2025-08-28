@@ -37,6 +37,7 @@ variable "start_canary" {
 variable "s3_artifact_bucket" {
   description = "Name of an existing S3 bucket to store Canary artifacts. If an empty string is provided, a new bucket will be created."
   type        = string
+  default = null
 }
 
 variable "blueprint_type" {
