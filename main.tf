@@ -42,7 +42,8 @@ data "archive_file" "canary_archive_file" {
   type           = "zip"
   source {
     content  = local.file_content[each.key]
-    filename = "nodejs/node_modules/canary-lambda.js"
+    # FIX: The filename must match the handler for the selected blueprint.
+    filename = "nodejs/node_modules/${var.blueprint_type == "api_request" ? "canary-api.js" : (var.blueprint_type == "heartbeat" ? "canary-heartbeat.js" : "canary-lambda.js")}"
   }
   output_path = "/tmp/${each.key}_${md5(local.file_content[each.key])}.zip"
 }
