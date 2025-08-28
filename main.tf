@@ -31,12 +31,20 @@ module "canary_s3" {
   namespace = var.namespace
 }
 
+# locals {
+#   # FIX: This local now correctly and safely determines the bucket name.
+#   # It checks if a bucket name was provided. If not, it uses the name of the bucket created by the module.
+#   # This avoids the invalid index error by removing the direct dependency on the module's output.
+#   artifact_bucket_name = lower(var.s3_artifact_bucket != null ? var.s3_artifact_bucket : module.canary_s3[0].name)
+# }
 locals {
-  # FIX: This local now correctly and safely determines the bucket name.
-  # It checks if a bucket name was provided. If not, it uses the name of the bucket created by the module.
-  # This avoids the invalid index error by removing the direct dependency on the module's output.
-  artifact_bucket_name = lower(var.s3_artifact_bucket != null ? var.s3_artifact_bucket : module.canary_s3[0].name)
+  artifact_bucket_name = lower(
+    var.s3_artifact_bucket != null ? var.s3_artifact_bucket :
+    (length(module.canary_s3) > 0 ? module.canary_s3[0].name : "")
+  )
 }
+
+
 
 data "archive_file" "canary_archive_file" {
   # Only create an archive file if the code source is TEMPLATE.
