@@ -10,26 +10,22 @@ resource "aws_iam_policy" "canary_policy" {
 #tfsec:ignore:aws-iam-no-policy-wildcards
 data "aws_iam_policy_document" "canary_permissions" {
   statement {
-    effect = "Allow"
+    sid = "S3Artifacts"
     actions = [
       "s3:PutObject",
-      "s3:GetObject"
+      "s3:GetObject",
+      "s3:ListBucket"
     ]
     resources = [
-      "arn:aws:s3:::${local.artifact_bucket_name}/*"  # Use dynamic bucket name
+      # REVERT: Use the local variable, which is now safe as the var is never null.
+      "arn:aws:s3:::${local.artifact_bucket_name}/*",
+      "arn:aws:s3:::${local.artifact_bucket_name}"
     ]
   }
+
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetBucketLocation"
-    ]
-    resources = [
-      "arn:aws:s3:::${local.artifact_bucket_name}"  # Use dynamic bucket name
-    ]
-  }
-  statement {
-    effect = "Allow"
+    sid    = "CloudWatchLogs"
+    effect  = "Allow"
     actions = [
       "logs:CreateLogStream",
       "logs:PutLogEvents",

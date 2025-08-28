@@ -9,22 +9,31 @@ locals {
 }
 
 locals {
+  # Conditionally select the template file based on the chosen blueprint
+  template_file_path = var.blueprint_type == "api_request" ? "${path.module}/canary-api.js.tpl" : (var.blueprint_type == "heartbeat" ? "${path.module}/canary-heartbeat.js.tpl" : "${path.module}/canary-lambda.js.tpl")
+
   # This creates a map containing content only for canaries using the TEMPLATE method.
-  file_content = { for k, v in var.endpoints : k => templatefile("${path.module}/canary-lambda.js.tpl", { endpoint = v.url }) if var.code_source == "TEMPLATE" }
+  file_content = { for k, v in var.endpoints : k => templatefile(local.template_file_path, {
+    # Pass the full endpoint object as a JSON string for the API template
+    endpoint_json = jsonencode(v),
+    # Pass just the URL for the page load template
+    endpoint      = v.url
+  }) if var.code_source == "TEMPLATE" }
 }
 
 module "canary_s3" {
   source = "test.com"
-  # FIX: Create a bucket only if the variable is null.
-  count  = var.s3_artifact_bucket == null ? 1 : 0
+  # REVERT: Create a bucket only if the variable is an empty string.
+  count  = var.s3_artifact_bucket == "" ? 1 : 0
 
-  name      = local.name
+  # REVERT: Use the shorter 'namespace' for the bucket name to avoid exceeding the API's length limit.
+  name      = var.namespace
   namespace = var.namespace
 }
 
 locals {
-  # FIX: Intelligently choose the bucket name based on whether the variable is null.
-  artifact_bucket_name = var.s3_artifact_bucket != null ? var.s3_artifact_bucket : module.canary_s3[0].name
+  # REVERT: This local now correctly and safely determines the bucket name based on an empty string check.
+  artifact_bucket_name = lower(var.s3_artifact_bucket != "" ? var.s3_artifact_bucket : module.canary_s3[0].name)
 }
 
 data "archive_file" "canary_archive_file" {
@@ -38,13 +47,19 @@ data "archive_file" "canary_archive_file" {
   output_path = "/tmp/${each.key}_${md5(local.file_content[each.key])}.zip"
 }
 
+
 resource "aws_synthetics_canary" "canary" {
   for_each = var.endpoints
 
   name                             = "${local.name}-${each.key}"
-  artifact_s3_location             = "s3://${local.artifact_bucket_name}/${each.key}"
+  # FIX: Added a trailing slash to ensure the location is treated as a prefix (folder).
+  # This is a strict requirement of the AWS Synthetics API.
+  artifact_s3_location             = "s3://${local.artifact_bucket_name}/${each.key}/"
   execution_role_arn               = aws_iam_role.canary_role.arn
-  handler                          = var.canary_handler
+  
+  # Conditionally set the handler based on the blueprint
+  handler                          = var.blueprint_type == "api_request" ? "canary-api.handler" : (var.blueprint_type == "heartbeat" ? "canary-heartbeat.handler" : var.canary_handler)
+  
   runtime_version                  = var.canary_runtime_version
   failure_retention_period_in_days = var.failure_retention_period_in_days
   success_retention_period_in_days = var.success_retention_period_in_days

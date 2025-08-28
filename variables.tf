@@ -35,9 +35,18 @@ variable "start_canary" {
 # --- Individual Variables (Reverted) ---
 
 variable "s3_artifact_bucket" {
-  description = "Name of an existing S3 bucket to store Canary artifacts. If not provided (null), a new bucket will be created."
+  description = "Name of an existing S3 bucket to store Canary artifacts. If an empty string is provided, a new bucket will be created."
   type        = string
-  default     = null
+}
+
+variable "blueprint_type" {
+  description = "The built-in blueprint to use when code_source is 'TEMPLATE'. One of 'page_load', 'api_request', or 'heartbeat'."
+  type        = string
+  default     = "page_load"
+  validation {
+    condition     = contains(["page_load", "api_request", "heartbeat"], var.blueprint_type)
+    error_message = "The blueprint_type must be one of 'page_load', 'api_request', or 'heartbeat'."
+  }
 }
 
 variable "code_source" {
