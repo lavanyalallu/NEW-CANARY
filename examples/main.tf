@@ -15,6 +15,7 @@ module "canaries" {
   success_retention_period_in_days = 7
   endpoints                        = var.endpoints
   group_name                       = aws_synthetics_group.example.name # Pass the group name in
+  artifact_s3_kms_key_arn          = var.artifact_s3_kms_key_arn       # Pass the KMS key ARN in
 
   # --- Grouped Variables ---
   run_config = {
