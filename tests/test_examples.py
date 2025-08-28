@@ -84,7 +84,7 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
-    print("\nDEBUG s3_bucket:", s3_bucket)  # <--- Move here
+    print("\nDEBUG s3_bucket:", s3_bucket)
     print("\nDEBUG s3_artifact_bucket_value:", get_output_value("debug_s3_artifact_bucket_value"))
     print("\nDEBUG canary_s3_length:", get_output_value("debug_canary_s3_length"))
     print("\nDEBUG canary_s3_first:", get_output_value("debug_canary_s3_first"))
@@ -92,11 +92,17 @@ def test_s3_artifact_bucket():
 
     assert s3_bucket, "The S3 bucket output is empty or missing."
 
-    bucket_details = s3_bucket.get("bucket") or s3_bucket
+    # Handle double-nested structure: s3_bucket -> bucket -> bucket 
+    if s3_bucket.get("bucket", {}).get("bucket"):
+        bucket_details = s3_bucket["bucket"]["bucket"]
+    else:
+        bucket_details = s3_bucket.get("bucket") or s3_bucket
+        
     assert bucket_details, "The S3 bucket details were not found in the s3_bucket output."
 
-    s3_bucket_name = bucket_details.get("id")
-    assert s3_bucket_name, "S3 bucket ID (name) not found in the bucket details."
+    # Get bucket name from id or name field
+    s3_bucket_name = bucket_details.get("id") or bucket_details.get("name")
+    assert s3_bucket_name, "S3 bucket ID/name not found in the bucket details."
 
     # Verify the bucket exists on AWS
     try:
