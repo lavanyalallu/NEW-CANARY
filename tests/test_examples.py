@@ -84,7 +84,11 @@ def test_s3_artifact_bucket():
     """
     Verifies the S3 artifact bucket exists and has the correct tags.
     """
-    print("DEBUG s3_bucket:", s3_bucket)  # <--- Move here
+    print("\nDEBUG s3_bucket:", s3_bucket)  # <--- Move here
+    print("\nDEBUG s3_artifact_bucket_value:", get_output_value("debug_s3_artifact_bucket_value"))
+    print("\nDEBUG canary_s3_length:", get_output_value("debug_canary_s3_length"))
+    print("\nDEBUG canary_s3_first:", get_output_value("debug_canary_s3_first"))
+    print("\nDEBUG tfoutput keys:", tfOutput)
 
     assert s3_bucket, "The S3 bucket output is empty or missing."
 

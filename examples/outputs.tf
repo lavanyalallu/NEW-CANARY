@@ -23,3 +23,18 @@ output "synthetics_canary" {
   value       = module.canaries.synthetics_canary
 }
 
+output "debug_s3_artifact_bucket_value" {
+  description = "Debug output to check the value of s3_artifact_bucket"
+  value       = module.canaries.debug_s3_artifact_bucket_value
+}
+
+output "debug_canary_s3_length" {
+  description = "Debug output to check if the S3 bucket is being created"
+  value       = module.canaries.debug_canary_s3_length
+}
+
+output "debug_canary_s3_first" {
+  description = "Debug output to see module.canary_s3[0] value"
+  value       = module.canaries.debug_canary_s3_first
+}
+
