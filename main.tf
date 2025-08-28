@@ -53,14 +53,9 @@ resource "aws_synthetics_canary" "canary" {
   for_each = var.endpoints
 
   name                             = "${local.name}-${each.key}"
-  # FIX: Added a trailing slash to ensure the location is treated as a prefix (folder).
-  # This is a strict requirement of the AWS Synthetics API.
   artifact_s3_location             = "s3://${local.artifact_bucket_name}/${each.key}/"
   execution_role_arn               = aws_iam_role.canary_role.arn
-  
-  # Conditionally set the handler based on the blueprint
   handler                          = var.blueprint_type == "api_request" ? "canary-api.handler" : (var.blueprint_type == "heartbeat" ? "canary-heartbeat.handler" : var.canary_handler)
-  
   runtime_version                  = var.canary_runtime_version
   failure_retention_period_in_days = var.failure_retention_period_in_days
   success_retention_period_in_days = var.success_retention_period_in_days
@@ -71,6 +66,18 @@ resource "aws_synthetics_canary" "canary" {
   s3_key      = var.code_source == "S3" ? var.code_s3_config.key : null
   s3_version  = var.code_source == "S3" ? var.code_s3_config.version : null
   zip_file    = var.code_source == "TEMPLATE" ? data.archive_file.canary_archive_file[each.key].output_path : (var.code_source == "ZIP_FILE" ? var.code_zip_file_path : null)
+
+  # FIX: Add artifact_config to allow for KMS encryption.
+  artifact_config {
+    dynamic "s3_encryption" {
+      # Only create this block if a KMS key ARN is provided.
+      for_each = var.artifact_s3_kms_key_arn != null ? [1] : []
+      content {
+        encryption_mode = "SSE_KMS"
+        kms_key_arn     = var.artifact_s3_kms_key_arn
+      }
+    }
+  }
 
   run_config {
     timeout_in_seconds    = var.run_config.timeout_in_seconds
