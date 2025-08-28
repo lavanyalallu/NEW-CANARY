@@ -20,16 +20,48 @@ locals {
     endpoint      = v.url
   }) if var.code_source == "TEMPLATE" }
 }
-
+locals {
+  artifact_bucket_name = lower(
+    var.s3_artifact_bucket != null ? var.s3_artifact_bucket :
+    (length(module.canary_s3) > 0 ? module.canary_s3[0].name : "")
+  )
+}
 module "canary_s3" {
   source = "test.com"
   # FIX: Create a bucket only if the variable is null.
-  count  = var.s3_artifact_bucket == null ? 1 : 0
+  #count  = var.s3_artifact_bucket == null ? 1 : 0
+  count     = var.s3_artifact_bucket == "" || var.s3_artifact_bucket == null ? 1 : 0
+  bucket_policy = data.aws_iam_policy_document.canary_bucket_policy.json
 
   # REVERT: Use the shorter 'namespace' for the bucket name to avoid exceeding the API's length limit.
   name      = var.namespace
   namespace = var.namespace
 }
+data "aws_iam_policy_document" "canary_bucket_policy" {
+  count = var.s3_artifact_bucket == "" || var.s3_artifact_bucket == null ? 1 : 0
+  statement {
+    sid    = "AllowCloudWatchSyntheticsAccess"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [module.canary_access.role.arn]
+    }
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:GetBucketLocation",
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      "${module.canary_s3[0].bucket.arn}",
+      "${module.canary_s3[0].bucket.arn}/*"
+    ]
+  }
+}
+
 
 # locals {
 #   # FIX: This local now correctly and safely determines the bucket name.
@@ -37,12 +69,7 @@ module "canary_s3" {
 #   # This avoids the invalid index error by removing the direct dependency on the module's output.
 #   artifact_bucket_name = lower(var.s3_artifact_bucket != null ? var.s3_artifact_bucket : module.canary_s3[0].name)
 # }
-locals {
-  artifact_bucket_name = lower(
-    var.s3_artifact_bucket != null ? var.s3_artifact_bucket :
-    (length(module.canary_s3) > 0 ? module.canary_s3[0].name : "")
-  )
-}
+
 
 
 
@@ -108,31 +135,23 @@ resource "aws_synthetics_canary" "canary" {
   tags = var.tags
 }
 
-resource "aws_iam_role" "canary_role" {
-  name = "${local.name}-role"
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [
-      {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-  tags = var.tags
-}
-    ]
-  }). (rest of IAM policies and resources) ...
-  tags = var.tags
-} REMOVED: The aws_synthetics_group resource has been removed as per code review.
-# The consumer of the module is now responsible for creating the group.
-# ... (rest of IAM policies and resources) ...
-resource "aws_synthetics_group_association" "this" {
-# REMOVED: The aws_synthetics_group resource has been removed as per code review.is provided.
-# The consumer of the module is now responsible for creating the group.
+# resource "aws_iam_role" "canary_role" {
+#   name = "${local.name}-role"
+#   assume_role_policy = jsonencode({
+#     Version   = "2012-10-17"
+#     Statement = [
+#       {
+#         Action    = "sts:AssumeRole"
+#         Effect    = "Allow"
+#         Principal = {
+#           Service = "lambda.amazonaws.com"
+#         }
+#       }
+#     ]
+#   })
+#   tags = var.tags
+# }
+
 
 resource "aws_synthetics_group_association" "this" {
   # FIX: Simplified logic. Create an association for each canary if a group_name is provided.
@@ -140,3 +159,5 @@ resource "aws_synthetics_group_association" "this" {
 module "state" {
   group_name = var.group_nameterraform-aws-modules/terraform-aws-state"
   canary_arn = aws_synthetics_canary.canary[each.key].arn}module "state" {  source = "git://github.com/terraform-aws-modules/terraform-aws-state"  }
+
+
