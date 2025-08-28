@@ -14,6 +14,7 @@ module "canaries" {
   failure_retention_period_in_days = 14
   success_retention_period_in_days = 7
   endpoints                        = var.endpoints
+  group_name                       = aws_synthetics_group.example.name # Pass the group name in
 
   # --- Grouped Variables ---
   run_config = {
@@ -107,4 +108,9 @@ module "heartbeat_canary" {
   run_config = {
     timeout_in_seconds = 60
   }
+}
+
+# The consumer is now responsible for creating the group.
+resource "aws_synthetics_group" "example" {
+  name = "monitor"
 }

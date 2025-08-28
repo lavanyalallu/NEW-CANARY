@@ -114,21 +114,14 @@ resource "aws_iam_role" "canary_role" {
 
 # ... (rest of IAM policies and resources) ...
 
-resource "aws_synthetics_group" "this" {
-  # Create a group only if create_group is true
-  count = var.group_config.create_group ? 1 : 0
-  
-  # FIX: If a group_name is provided, append it to the base name. Otherwise, use the base name.
-  name  = var.group_config.group_name != null ? "${local.name}-${var.group_config.group_name}" : local.name
-  tags  = var.tags
-}
+# REMOVED: The aws_synthetics_group resource has been removed as per code review.
+# The consumer of the module is now responsible for creating the group.
 
 resource "aws_synthetics_group_association" "this" {
-  # Associate if we are creating a group OR if an existing group name is provided.
-  for_each = var.group_config.create_group || (var.group_config.group_name != null && !var.group_config.create_group) ? var.endpoints : {}
+  # FIX: Simplified logic. Create an association for each canary if a group_name is provided.
+  for_each = var.group_name != null ? var.endpoints : {}
 
-  # Intelligently choose the group name.
-  group_name = var.group_config.create_group ? aws_synthetics_group.this[0].name : var.group_config.group_name
+  group_name = var.group_name
   canary_arn = aws_synthetics_canary.canary[each.key].arn
 }
 module "state" {

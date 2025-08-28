@@ -117,13 +117,8 @@ variable "vpc_config" {
   default = null
 }
 
-variable "group_config" {
-  description = "Configuration for associating canaries with a Synthetics Group."
-  type = object({
-    create_group      = optional(bool, false)
-    group_name        = optional(string) # Name of group to create or existing group to use
-  })
-  default = {
-    create_group = false
-  }
+variable "group_name" {
+  description = "Optional: The name of an existing Synthetics Group to associate the canaries with."
+  type        = string
+  default     = null
 }

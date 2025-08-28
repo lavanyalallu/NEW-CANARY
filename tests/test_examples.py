@@ -109,42 +109,23 @@ def test_s3_artifact_bucket():
         assert actual_tags.get(k) == v, f"Tag '{k}' mismatch for S3 bucket: expected '{v}', got '{actual_tags.get(k)}'"
 
 
-def test_synthetics_group_exists_on_aws():
-    """
-    Verifies that the Synthetics Group was created correctly on AWS.
-    """
-    assert synthetics_group, "Synthetics Group info not found in outputs."
-    group_name = synthetics_group.get("name")
-    assert group_name, "Synthetics group name is missing from the output."
-
-    # Verify the group exists and has the correct tags
-    try:
-        response = synthetics_client.get_group(GroupIdentifier=group_name)
-        actual_tags = response.get("Group", {}).get("Tags", {})
-
-        # FIX: Get expected tags from the synthetics group's own output object.
-        expected_tags = synthetics_group.get("tags", {})
-        for k, v in expected_tags.items():
-            assert actual_tags.get(k) == v, f"Group tag '{k}' mismatch: expected '{v}', got '{actual_tags.get(k)}'"
-
-    except synthetics_client.exceptions.NotFoundException:
-        pytest.fail(f"The Synthetics Group '{group_name}' was not found on AWS.")
+# REMOVED: This test is no longer relevant as the module is not responsible for creating the group.
+# The consumer of the module (the example code) is now responsible for this resource.
 
 
 def test_canary_is_associated_with_group():
     """
     Verifies that all canaries are correctly associated with the Synthetics Group.
     """
-    # FIX: Removed the conditional skip. This test now asserts that the group must exist.
-    assert synthetics_group, "Synthetics Group info not found in outputs for association test."
+    # FIX: Get the group name from the example's direct output, not the module's output.
+    group_name = get_output_value("synthetics_group_name")
+    assert group_name, "Synthetics group name not found in example outputs for association test."
 
-    group_name = synthetics_group.get("name")
-    assert group_name, "Synthetics group name is missing from the output."
-    
     expected_canary_arns = {details['arn'] for _, details in canaries.items()}
     
     response = synthetics_client.list_group_resources(GroupIdentifier=group_name)
-    associated_canary_arns = set(response.get('Resources', []))
+    # The response from list_group_resources only contains the canary ARNs.
+    associated_canary_arns = {resource['Arn'] for resource in response.get('Resources', [])}
 
     assert expected_canary_arns.issubset(associated_canary_arns), \
         f"Not all canaries were found in the synthetics group '{group_name}'."
